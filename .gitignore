@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+xcuserdata/
+
+# SwiftPM
+.build/
+
+# Logs
+*.log
+
+# User-specific
+*.swp
+*.swo
