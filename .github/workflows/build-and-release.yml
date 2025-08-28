@@ -1,0 +1,226 @@
+name: Build and Release MP3ToAudiobook
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Install Swift
+      run: |
+        brew install swift
+
+    - name: Cache Swift dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          .build
+          ~/Library/Developer/Xcode/DerivedData
+        key: ${{ runner.os }}-swift-${{ hashFiles('**/Package.swift') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+
+    - name: Build application
+      run: |
+        swift build --configuration release
+
+    - name: Create app bundle
+      run: |
+        # Create app bundle structure
+        mkdir -p MP3ToAudiobook.app/Contents/MacOS
+        mkdir -p MP3ToAudiobook.app/Contents/Resources
+
+        # Copy executable
+        cp .build/release/MP3ToAudiobook MP3ToAudiobook.app/Contents/MacOS/
+
+        # Create Info.plist
+        cat > MP3ToAudiobook.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>MP3ToAudiobook</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.mp3toaudiobook.app</string>
+            <key>CFBundleName</key>
+            <string>MP3ToAudiobook</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>13.0</string>
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>NSAppTransportSecurity</key>
+            <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <true/>
+            </dict>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Create app icon
+      run: |
+        # Install ImageMagick for icon conversion
+        brew install imagemagick
+
+        # Convert source PNG to different sizes
+        convert Assets/AppIcon.png -resize 1024x1024 Assets/AppIcon_1024.png
+        convert Assets/AppIcon.png -resize 512x512 Assets/AppIcon_512.png
+        convert Assets/AppIcon.png -resize 256x256 Assets/AppIcon_256.png
+        convert Assets/AppIcon.png -resize 128x128 Assets/AppIcon_128.png
+        convert Assets/AppIcon.png -resize 64x64 Assets/AppIcon_64.png
+        convert Assets/AppIcon.png -resize 32x32 Assets/AppIcon_32.png
+        convert Assets/AppIcon.png -resize 16x16 Assets/AppIcon_16.png
+
+        # Create iconset directory
+        mkdir -p MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset
+
+        # Copy icons to iconset
+        cp Assets/AppIcon_16.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_16x16.png
+        cp Assets/AppIcon_32.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_16x16@2x.png
+        cp Assets/AppIcon_32.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_32x32.png
+        cp Assets/AppIcon_64.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_32x32@2x.png
+        cp Assets/AppIcon_128.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_128x128.png
+        cp Assets/AppIcon_256.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_128x128@2x.png
+        cp Assets/AppIcon_256.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_256x256.png
+        cp Assets/AppIcon_512.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_256x256@2x.png
+        cp Assets/AppIcon_512.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_512x512.png
+        cp Assets/AppIcon_1024.png MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset/icon_512x512@2x.png
+
+        # Convert iconset to icns
+        iconutil -c icns MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset -o MP3ToAudiobook.app/Contents/Resources/AppIcon.icns
+
+    - name: Create entitlements and sign application
+      run: |
+        # Create entitlements file for file access
+        cat > entitlements.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.files.user-selected.read-write</key>
+            <true/>
+            <key>com.apple.security.files.downloads.read-write</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
+
+        # Sign the application with ad-hoc signature
+        codesign --force --sign - --entitlements entitlements.plist MP3ToAudiobook.app
+
+        # Verify signature
+        codesign --verify --verbose MP3ToAudiobook.app
+
+    - name: Create DMG
+      run: |
+        # Install create-dmg if not available
+        if ! command -v create-dmg &> /dev/null; then
+          brew install create-dmg
+        fi
+
+        # Create DMG
+        create-dmg \
+          --volname "MP3ToAudiobook" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "MP3ToAudiobook.app" 200 190 \
+          --hide-extension "MP3ToAudiobook.app" \
+          --app-drop-link 600 185 \
+          "MP3ToAudiobook.dmg" \
+          "MP3ToAudiobook.app"
+
+    - name: Get version and changelog
+      id: get_version
+      run: |
+        # Get current date and time for unique version
+        DATE=$(date +%Y.%m.%d)
+        TIME=$(date +%H%M%S)
+        BUILD_NUMBER=$(git rev-list --count HEAD)
+        VERSION="${DATE}.${BUILD_NUMBER}.${TIME}"
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+        # Get recent commits for changelog
+        CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s" | head -5)
+        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+        echo "$CHANGELOG" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    - name: Create Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.VERSION }}
+        release_name: MP3ToAudiobook v${{ env.VERSION }}
+        body: |
+          ## 🚀 Новый релиз MP3ToAudiobook
+
+          **Версия:** ${{ env.VERSION }}
+          **Коммит:** ${{ github.sha }}
+          **Ветка:** ${{ github.ref_name }}
+          **Дата сборки:** ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+
+          ## 📝 Изменения в этом релизе
+
+          ${{ env.CHANGELOG }}
+
+          ## 📦 Скачать
+
+          Скачайте `MP3ToAudiobook.dmg` для установки приложения на macOS.
+
+          ## ⚠️ Важно: Первый запуск
+
+          При первом запуске macOS может заблокировать приложение с сообщением "MP3ToAudiobook can't be opened". Чтобы запустить приложение:
+
+          1. Правой кнопкой мыши нажмите на `MP3ToAudiobook.app`
+          2. Выберите "Открыть" в контекстном меню
+          3. Подтвердите запуск в диалоговом окне
+
+          Или в терминале выполните:
+          ```bash
+          xattr -rd com.apple.quarantine /Applications/MP3ToAudiobook.app
+          ```
+
+          ## ✨ Особенности
+
+          - Современный интерфейс SwiftUI
+          - Конвертация MP3 в M4B с метаданными
+          - Поддержка обложек книг
+          - Автоматическое определение автора и названия
+          - Встроенная система логирования
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./MP3ToAudiobook.dmg
+        asset_name: MP3ToAudiobook.dmg
+        asset_content_type: application/octet-stream

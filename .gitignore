@@ -1,0 +1,39 @@
+# Build artifacts
+.build/
+*.o
+*.d
+*.deps
+*.swiftdeps
+*.emit-module.d
+*.dSYM/
+*.product/
+Modules/
+debug.yaml
+plugin-tools.yaml
+build.db
+workspace-state.json
+index/
+build 2.db
+debug 2
+debug 2.yaml
+plugin-tools 2.yaml
+workspace-state 2.json
+
+# Xcode
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
