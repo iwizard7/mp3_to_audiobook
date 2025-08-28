@@ -9,6 +9,7 @@ extension UTType {
 
 struct ContentView: View {
     @State private var selectedFiles: [URL] = []
+    @State private var originalFiles: [URL] = [] // Оригинальные URL для отображения имен
     @State private var author = ""
     @State private var title = ""
     @State private var coverImage: NSImage?
@@ -38,20 +39,24 @@ struct ContentView: View {
             ) { result in
                 switch result {
                 case .success(let urls):
-                    selectedFiles = urls
-                    if let folderURL = urls.first?.deletingLastPathComponent() {
-                        parseFolderName(folderURL)
+                    originalFiles = urls
+                    // Копируем файлы во временную директорию для обеспечения доступа
+                    copyFilesToTempDirectory(urls) { copiedURLs in
+                        selectedFiles = copiedURLs
+                        if let folderURL = urls.first?.deletingLastPathComponent() {
+                            parseFolderName(folderURL)
+                        }
                     }
                 case .failure(let error):
                     print("Ошибка выбора файлов: \(error)")
                 }
             }
 
-            if !selectedFiles.isEmpty {
-                Text("Выбрано файлов: \(selectedFiles.count)")
+            if !originalFiles.isEmpty {
+                Text("Выбрано файлов: \(originalFiles.count)")
                     .foregroundColor(.secondary)
 
-                List(selectedFiles, id: \.self) { url in
+                List(originalFiles, id: \.self) { url in
                     Text(url.lastPathComponent)
                 }
                 .frame(height: 100)
@@ -96,7 +101,7 @@ struct ContentView: View {
             }
 
             // Кнопка конвертации
-            if !selectedFiles.isEmpty {
+            if !originalFiles.isEmpty {
                 Button("Конвертировать в M4B") {
                     showSaveDialog()
                 }
@@ -122,7 +127,7 @@ struct ContentView: View {
             // Кнопки управления
             HStack(spacing: 20) {
                 // Кнопка очистки списка
-                if !selectedFiles.isEmpty && !isConverting {
+                if !originalFiles.isEmpty && !isConverting {
                     Button("Очистить список") {
                         clearFileList()
                     }
@@ -207,14 +212,54 @@ struct ContentView: View {
 
     private func clearFileList() {
         selectedFiles = []
+        originalFiles = []
         author = ""
         title = ""
         coverImage = nil
         statusMessage = ""
+
+        // Очищаем временную директорию
+        let fileManager = FileManager.default
+        let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
+        try? fileManager.removeItem(at: tempDirectory)
     }
 
     private func exitApplication() {
         NSApplication.shared.terminate(nil)
+    }
+
+    private func copyFilesToTempDirectory(_ urls: [URL], completion: @escaping ([URL]) -> Void) {
+        DispatchQueue.global(qos: .background).async {
+            let fileManager = FileManager.default
+            let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
+
+            // Создаем временную директорию если её нет
+            try? fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+
+            // Очищаем старую временную директорию
+            try? fileManager.removeItem(at: tempDirectory)
+            try? fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+
+            var copiedURLs: [URL] = []
+
+            for url in urls {
+                let fileName = url.lastPathComponent
+                let destinationURL = tempDirectory.appendingPathComponent(fileName)
+
+                do {
+                    try fileManager.copyItem(at: url, to: destinationURL)
+                    copiedURLs.append(destinationURL)
+                } catch {
+                    print("Ошибка копирования файла \(fileName): \(error)")
+                    // Если не удалось скопировать, используем оригинальный URL
+                    copiedURLs.append(url)
+                }
+            }
+
+            DispatchQueue.main.async {
+                completion(copiedURLs)
+            }
+        }
     }
 }
 
