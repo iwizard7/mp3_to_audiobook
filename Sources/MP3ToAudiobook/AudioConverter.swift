@@ -25,7 +25,9 @@ class AudioConverter {
             func processNextFile() {
                 guard processedFiles < inputURLs.count else {
                     // Все файлы обработаны, начинаем экспорт
-                    exportComposition(composition, outputURL: outputURL, author: author, title: title, coverImage: coverImage, completion: completion)
+                    // Конвертируем NSImage в Data заранее
+                    let coverImageData = coverImage?.tiffRepresentation
+                    exportComposition(composition, outputURL: outputURL, author: author, title: title, coverImageData: coverImageData, completion: completion)
                     return
                 }
 
@@ -44,26 +46,28 @@ class AudioConverter {
                         return
                     }
 
-                    do {
-                        // Загружаем длительность
-                        let duration = try asset.load(.duration)
-                        let timeRange = CMTimeRange(start: .zero, duration: duration)
+                    // Загружаем свойства асинхронно
+                    Task {
+                        do {
+                            let duration = try await asset.load(.duration)
+                            let timeRange = CMTimeRange(start: .zero, duration: duration)
 
-                        try audioTrack.insertTimeRange(timeRange, of: audioAssetTrack, at: currentTime)
-                        currentTime = CMTimeAdd(currentTime, timeRange.duration)
+                            try audioTrack.insertTimeRange(timeRange, of: audioAssetTrack, at: currentTime)
+                            currentTime = CMTimeAdd(currentTime, timeRange.duration)
 
-                        processedFiles += 1
+                            processedFiles += 1
 
-                        DispatchQueue.main.async {
-                            progressHandler(Double(processedFiles) / Double(inputURLs.count) * 0.5)
+                            await MainActor.run {
+                                progressHandler(Double(processedFiles) / Double(inputURLs.count) * 0.5)
+                            }
+
+                            // Обрабатываем следующий файл
+                            processNextFile()
+
+                        } catch {
+                            completion(.failure(error))
+                            return
                         }
-
-                        // Обрабатываем следующий файл
-                        processNextFile()
-
-                    } catch {
-                        completion(.failure(error))
-                        return
                     }
                 }
             }
@@ -78,7 +82,7 @@ class AudioConverter {
         outputURL: URL,
         author: String,
         title: String,
-        coverImage: NSImage?,
+        coverImageData: Data?,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         // Создание экспорта
@@ -105,7 +109,7 @@ class AudioConverter {
         authorItem.value = author as NSString
         metadata.append(authorItem)
 
-        if let coverImage = coverImage, let imageData = coverImage.tiffRepresentation {
+        if let imageData = coverImageData {
             let artworkItem = AVMutableMetadataItem()
             artworkItem.key = AVMetadataKey.commonKeyArtwork as NSString
             artworkItem.keySpace = AVMetadataKeySpace.common
