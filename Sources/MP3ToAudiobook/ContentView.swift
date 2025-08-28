@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var showSavePanel = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
+    @State private var logs = ""
 
     var body: some View {
         ScrollView {
@@ -122,8 +123,35 @@ struct ContentView: View {
                         .padding(.vertical, 5)
                 }
 
+                // Логи (показываются только если включено)
+                if settings.showLogs && !logs.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("📋 Логи:")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        ScrollView {
+                            Text(logs)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(8)
+                        }
+                        .frame(height: 150)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                    .padding(.vertical, 10)
+                }
+
                 // Кнопки управления
                 HStack(spacing: 20) {
+                    // Кнопка переключения логов
+                    Button(settings.showLogs ? "Скрыть логи" : "Показать логи") {
+                        settings.showLogs.toggle()
+                    }
+                    .buttonStyle(.bordered)
+
                     if !selectedFiles.isEmpty && !isConverting {
                         Button("Очистить список") {
                             clearFileList()
@@ -178,6 +206,18 @@ struct ContentView: View {
         isConverting = true
         progress = 0.0
         statusMessage = ""
+        logs = ""
+
+        // Логирование начала конвертации
+        if settings.showLogs {
+            addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
+            addLog("Количество выбранных файлов: \(selectedFiles.count)")
+            addLog("Выходной файл: \(outputURL.path)")
+            addLog("Автор: \(author)")
+            addLog("Название: \(title)")
+            addLog("Обложка: \(coverImage != nil ? "есть" : "нет")")
+            addLog("========================")
+        }
 
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,
@@ -188,6 +228,9 @@ struct ContentView: View {
         ) { progressValue in
             DispatchQueue.main.async {
                 self.progress = progressValue
+                if self.settings.showLogs {
+                    self.addLog("Прогресс: \(Int(progressValue * 100))%")
+                }
             }
         } completion: { result in
             DispatchQueue.main.async {
@@ -198,12 +241,23 @@ struct ContentView: View {
                 case .success:
                     self.statusMessage = "✅ Конвертация завершена успешно!"
                     self.statusColor = .green
+                    if self.settings.showLogs {
+                        self.addLog("✅ Конвертация завершена успешно!")
+                    }
                 case .failure(let error):
                     self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
                     self.statusColor = .red
+                    if self.settings.showLogs {
+                        self.addLog("❌ Ошибка: \(error.localizedDescription)")
+                    }
                 }
             }
         }
+    }
+
+    private func addLog(_ message: String) {
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        logs += "[\(timestamp)] \(message)\n"
     }
 
     private func clearFileList() {
@@ -212,6 +266,7 @@ struct ContentView: View {
         title = ""
         coverImage = nil
         statusMessage = ""
+        logs = ""
     }
 
     private func exitApplication() {
