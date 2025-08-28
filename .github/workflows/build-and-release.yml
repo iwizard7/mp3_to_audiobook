@@ -152,10 +152,11 @@ jobs:
     - name: Get version and changelog
       id: get_version
       run: |
-        # Get current date for version
+        # Get current date and time for unique version
         DATE=$(date +%Y.%m.%d)
+        TIME=$(date +%H%M%S)
         BUILD_NUMBER=$(git rev-list --count HEAD)
-        VERSION="${DATE}.${BUILD_NUMBER}"
+        VERSION="${DATE}.${BUILD_NUMBER}.${TIME}"
         echo "VERSION=$VERSION" >> $GITHUB_ENV
 
         # Get recent commits for changelog
