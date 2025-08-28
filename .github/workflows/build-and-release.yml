@@ -82,14 +82,14 @@ jobs:
         # Install ImageMagick for icon conversion
         brew install imagemagick
 
-        # Convert SVG to PNG in different sizes
-        convert Assets/AppIcon.svg -resize 1024x1024 Assets/AppIcon_1024.png
-        convert Assets/AppIcon.svg -resize 512x512 Assets/AppIcon_512.png
-        convert Assets/AppIcon.svg -resize 256x256 Assets/AppIcon_256.png
-        convert Assets/AppIcon.svg -resize 128x128 Assets/AppIcon_128.png
-        convert Assets/AppIcon.svg -resize 64x64 Assets/AppIcon_64.png
-        convert Assets/AppIcon.svg -resize 32x32 Assets/AppIcon_32.png
-        convert Assets/AppIcon.svg -resize 16x16 Assets/AppIcon_16.png
+        # Convert source PNG to different sizes
+        convert Assets/AppIcon.png -resize 1024x1024 Assets/AppIcon_1024.png
+        convert Assets/AppIcon.png -resize 512x512 Assets/AppIcon_512.png
+        convert Assets/AppIcon.png -resize 256x256 Assets/AppIcon_256.png
+        convert Assets/AppIcon.png -resize 128x128 Assets/AppIcon_128.png
+        convert Assets/AppIcon.png -resize 64x64 Assets/AppIcon_64.png
+        convert Assets/AppIcon.png -resize 32x32 Assets/AppIcon_32.png
+        convert Assets/AppIcon.png -resize 16x16 Assets/AppIcon_16.png
 
         # Create iconset directory
         mkdir -p MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset
