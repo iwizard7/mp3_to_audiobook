@@ -82,7 +82,6 @@ jobs:
         # Create DMG
         create-dmg \
           --volname "MP3ToAudiobook" \
-          --volicon "MP3ToAudiobook.app" \
           --window-pos 200 120 \
           --window-size 800 400 \
           --icon-size 100 \
