@@ -42,12 +42,9 @@ struct ContentView: View {
                 switch result {
                 case .success(let urls):
                     originalFiles = urls
-                    // Копируем файлы во временную директорию для обеспечения доступа
-                    copyFilesToTempDirectory(urls) { copiedURLs in
-                        selectedFiles = copiedURLs
-                        if let folderURL = urls.first?.deletingLastPathComponent() {
-                            parseFolderName(folderURL)
-                        }
+                    selectedFiles = urls // Используем оригинальные URL напрямую
+                    if let folderURL = urls.first?.deletingLastPathComponent() {
+                        parseFolderName(folderURL)
                     }
                 case .failure(let error):
                     print("Ошибка выбора файлов: \(error)")
@@ -228,26 +225,9 @@ struct ContentView: View {
         // Логирование для диагностики
         addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
         addLog("Количество выбранных файлов: \(selectedFiles.count)")
-        addLog("Оригинальные файлы:")
-        for (index, url) in originalFiles.enumerated() {
-            addLog("  [\(index)]: \(url.path)")
-        }
-        addLog("Скопированные файлы:")
+        addLog("Выбранные файлы:")
         for (index, url) in selectedFiles.enumerated() {
             addLog("  [\(index)]: \(url.path)")
-            // Проверяем существование файла
-            let fileManager = FileManager.default
-            let exists = fileManager.fileExists(atPath: url.path)
-            addLog("    Существует: \(exists)")
-            if exists {
-                do {
-                    let attributes = try fileManager.attributesOfItem(atPath: url.path)
-                    let fileSize = attributes[.size] as? Int64 ?? 0
-                    addLog("    Размер: \(fileSize) bytes")
-                } catch {
-                    addLog("    Ошибка получения атрибутов: \(error)")
-                }
-            }
         }
         addLog("Выходной файл: \(outputURL.path)")
         addLog("========================")
@@ -298,11 +278,6 @@ struct ContentView: View {
         title = ""
         coverImage = nil
         statusMessage = ""
-
-        // Очищаем временную директорию
-        let fileManager = FileManager.default
-        let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
-        try? fileManager.removeItem(at: tempDirectory)
     }
 
     private func exitApplication() {
@@ -327,87 +302,6 @@ struct ContentView: View {
         logs = ""
     }
 
-    private func copyFilesToTempDirectory(_ urls: [URL], completion: @escaping ([URL]) -> Void) {
-        addLog("=== КОПИРОВАНИЕ ФАЙЛОВ ВО ВРЕМЕННУЮ ДИРЕКТОРИЮ ===")
-        addLog("Количество файлов для копирования: \(urls.count)")
-
-        DispatchQueue.global(qos: .background).async {
-            let fileManager = FileManager.default
-            let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
-
-            self.addLog("Временная директория: \(tempDirectory.path)")
-
-            // Создаем временную директорию если её нет
-            do {
-                try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
-                self.addLog("Временная директория создана")
-            } catch {
-                self.addLog("Ошибка создания временной директории: \(error)")
-            }
-
-            // Очищаем старую временную директорию
-            do {
-                try fileManager.removeItem(at: tempDirectory)
-                try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
-                self.addLog("Старая временная директория очищена")
-            } catch {
-                self.addLog("Ошибка очистки временной директории: \(error)")
-            }
-
-            var copiedURLs: [URL] = []
-
-            for (index, url) in urls.enumerated() {
-                let fileName = url.lastPathComponent
-                let destinationURL = tempDirectory.appendingPathComponent(fileName)
-
-                self.addLog("Копирование файла [\(index)]: \(fileName)")
-                self.addLog("  Из: \(url.path)")
-                self.addLog("  В: \(destinationURL.path)")
-
-                // Проверяем существование исходного файла
-                let sourceExists = fileManager.fileExists(atPath: url.path)
-                self.addLog("  Исходный файл существует: \(sourceExists)")
-
-                if sourceExists {
-                    do {
-                        let sourceAttributes = try fileManager.attributesOfItem(atPath: url.path)
-                        let sourceSize = sourceAttributes[.size] as? Int64 ?? 0
-                        self.addLog("  Размер исходного файла: \(sourceSize) bytes")
-
-                        try fileManager.copyItem(at: url, to: destinationURL)
-                        copiedURLs.append(destinationURL)
-
-                        // Проверяем скопированный файл
-                        let destExists = fileManager.fileExists(atPath: destinationURL.path)
-                        self.addLog("  Скопированный файл существует: \(destExists)")
-
-                        if destExists {
-                            let destAttributes = try fileManager.attributesOfItem(atPath: destinationURL.path)
-                            let destSize = destAttributes[.size] as? Int64 ?? 0
-                            self.addLog("  Размер скопированного файла: \(destSize) bytes")
-                        }
-
-                        self.addLog("  ✅ Файл [\(index)] скопирован успешно")
-                    } catch {
-                        self.addLog("  ❌ Ошибка копирования файла \(fileName): \(error)")
-                        // Если не удалось скопировать, используем оригинальный URL
-                        copiedURLs.append(url)
-                        self.addLog("  Используем оригинальный URL")
-                    }
-                } else {
-                    self.addLog("  ❌ Исходный файл не существует")
-                    copiedURLs.append(url)
-                }
-            }
-
-            self.addLog("Всего скопировано файлов: \(copiedURLs.count)")
-            self.addLog("===============================================")
-
-            DispatchQueue.main.async {
-                completion(copiedURLs)
-            }
-        }
-    }
 }
 
 #Preview {
