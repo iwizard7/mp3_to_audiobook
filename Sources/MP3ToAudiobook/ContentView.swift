@@ -11,7 +11,6 @@ struct ContentView: View {
     @EnvironmentObject private var settings: AppSettings
 
     @State private var selectedFiles: [URL] = []
-    @State private var originalFiles: [URL] = [] // Оригинальные URL для отображения имен
     @State private var author = ""
     @State private var title = ""
     @State private var coverImage: NSImage?
@@ -22,203 +21,131 @@ struct ContentView: View {
     @State private var showSavePanel = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
-    @State private var logs = ""
-    
+
     var body: some View {
-        VStack(spacing: 20) {
-            Text("MP3 в M4B Конвертер")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+        ScrollView {
+            VStack(spacing: 20) {
+                Text("MP3 в M4B Конвертер")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
 
-            // Выбор файлов
-            Button("Выбрать MP3 файлы") {
-                showFileImporter = true
-            }
-            .buttonStyle(.borderedProminent)
-            .fileImporter(
-                isPresented: $showFileImporter,
-                allowedContentTypes: [.mp3],
-                allowsMultipleSelection: true
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    originalFiles = urls
-                    selectedFiles = urls // Используем оригинальные URL напрямую
-                    if let folderURL = urls.first?.deletingLastPathComponent() {
-                        parseFolderName(folderURL)
-                    }
-                case .failure(let error):
-                    print("Ошибка выбора файлов: \(error)")
-                }
-            }
-
-            if !originalFiles.isEmpty {
-                Text("Выбрано файлов: \(originalFiles.count)")
-                    .foregroundColor(.secondary)
-
-                List(originalFiles, id: \.self) { url in
-                    Text(url.lastPathComponent)
-                }
-                .frame(height: 100)
-            }
-
-            // Поля ввода
-            VStack(alignment: .leading, spacing: 10) {
-                TextField("Автор", text: $author)
-                    .textFieldStyle(.roundedBorder)
-
-                TextField("Название книги", text: $title)
-                    .textFieldStyle(.roundedBorder)
-
-                HStack {
-                    Button("Выбрать обложку") {
-                        showCoverImporter = true
-                    }
-                    .buttonStyle(.bordered)
-
-                    if let image = coverImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                    }
-                }
-            }
-            .padding(.horizontal)
-            .fileImporter(
-                isPresented: $showCoverImporter,
-                allowedContentTypes: [.image],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        coverImage = NSImage(contentsOf: url)
-                    }
-                case .failure(let error):
-                    print("Ошибка выбора обложки: \(error)")
-                }
-            }
-
-            // Кнопка конвертации
-            if !originalFiles.isEmpty {
-                Button("Конвертировать в M4B") {
-                    showSaveDialog()
+                // Выбор файлов
+                Button("Выбрать MP3 файлы") {
+                    showFileImporter = true
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isConverting)
-            }
+                .fileImporter(
+                    isPresented: $showFileImporter,
+                    allowedContentTypes: [.mp3],
+                    allowsMultipleSelection: true
+                ) { result in
+                    switch result {
+                    case .success(let urls):
+                        selectedFiles = urls
+                        if let folderURL = urls.first?.deletingLastPathComponent() {
+                            parseFolderName(folderURL)
+                        }
+                    case .failure(let error):
+                        print("Ошибка выбора файлов: \(error)")
+                    }
+                }
 
-            if isConverting {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                Text("Конвертация... \(Int(progress * 100))%")
-            }
-
-            // Сообщение о статусе
-            if !statusMessage.isEmpty {
-                Text(statusMessage)
-                    .foregroundColor(statusColor)
-                    .font(.callout)
-                    .multilineTextAlignment(.center)
-                    .padding(.vertical, 5)
-            }
-
-            // Логи (показываются только если включено)
-            if settings.showLogs && !logs.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("📋 Логи:")
-                        .font(.headline)
+                if !selectedFiles.isEmpty {
+                    Text("Выбрано файлов: \(selectedFiles.count)")
                         .foregroundColor(.secondary)
 
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 2) {
-                            ForEach(logs, id: \.self) { log in
-                                Text(log)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        .padding(8)
+                    List(selectedFiles, id: \.self) { url in
+                        Text(url.lastPathComponent)
                     }
-                    .frame(height: 150)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+                    .frame(height: 100)
                 }
-                .padding(.vertical, 10)
-            }
 
-            // Кнопки управления
-            HStack(spacing: 20) {
-                // Кнопка очистки списка
-                if !originalFiles.isEmpty && !isConverting {
-                    Button("Очистить список") {
-                        clearFileList()
+                // Поля ввода
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Автор", text: $author)
+                        .textFieldStyle(.roundedBorder)
+
+                    TextField("Название книги", text: $title)
+                        .textFieldStyle(.roundedBorder)
+
+                    HStack {
+                        Button("Выбрать обложку") {
+                            showCoverImporter = true
+                        }
+                        .buttonStyle(.bordered)
+
+                        if let image = coverImage {
+                            Image(nsImage: image)
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .fileImporter(
+                    isPresented: $showCoverImporter,
+                    allowedContentTypes: [.image],
+                    allowsMultipleSelection: false
+                ) { result in
+                    switch result {
+                    case .success(let urls):
+                        if let url = urls.first {
+                            coverImage = NSImage(contentsOf: url)
+                        }
+                    case .failure(let error):
+                        print("Ошибка выбора обложки: \(error)")
+                    }
+                }
+
+                // Кнопка конвертации
+                if !selectedFiles.isEmpty {
+                    Button("Конвертировать в M4B") {
+                        showSaveDialog()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isConverting)
+                }
+
+                if isConverting {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                    Text("Конвертация... \(Int(progress * 100))%")
+                }
+
+                // Сообщение о статусе
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .foregroundColor(statusColor)
+                        .font(.callout)
+                        .multilineTextAlignment(.center)
+                        .padding(.vertical, 5)
+                }
+
+                // Кнопки управления
+                HStack(spacing: 20) {
+                    if !selectedFiles.isEmpty && !isConverting {
+                        Button("Очистить список") {
+                            clearFileList()
+                        }
+                        .buttonStyle(.bordered)
+                        .foregroundColor(.red)
+                    }
+
+                    Button("Выход") {
+                        exitApplication()
                     }
                     .buttonStyle(.bordered)
-                    .foregroundColor(.red)
+                    .foregroundColor(.gray)
                 }
-
-                // Кнопка выхода
-                Button("Выход") {
-                    exitApplication()
-                }
-                .buttonStyle(.bordered)
-                .foregroundColor(.gray)
             }
-
-            // Область логов
-            if settings.showLogs {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Логи выполнения")
-                            .font(.headline)
-                        Spacer()
-                        Button("Скопировать логи") {
-                            copyLogsToClipboard()
-                        }
-                        .buttonStyle(.bordered)
-                        Button("Очистить логи") {
-                            clearLogs()
-                        }
-                        .buttonStyle(.bordered)
-                        Button("Скрыть логи") {
-                            settings.showLogs.toggle()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    ScrollView {
-                        Text(logs.isEmpty ? "Логи пусты" : logs)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(5)
-                    }
-                    .frame(height: 200)
-                }
-                .padding(.top)
-            } else {
-                Button("Показать логи") {
-                    settings.showLogs.toggle()
-                }
-                .buttonStyle(.bordered)
-                .padding(.top)
-            }
+            .padding()
+            .frame(minWidth: 500)
         }
-        .padding()
-        .frame(minWidth: 500, minHeight: 400)
     }
-    
+
     private func parseFolderName(_ folderURL: URL) {
         let folderName = folderURL.lastPathComponent
-        // Простой парсер: предполагаем формат "Автор - Название"
         let components = folderName.components(separatedBy: " - ")
         if components.count >= 2 {
             author = components[0].trimmingCharacters(in: .whitespaces)
@@ -227,20 +154,20 @@ struct ContentView: View {
             title = folderName
         }
     }
-    
+
     private func showSaveDialog() {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.audio]
         savePanel.canCreateDirectories = true
         savePanel.nameFieldStringValue = "\(title).m4b"
-        
+
         savePanel.begin { response in
             if response == .OK, let url = savePanel.url {
                 convertToM4B(outputURL: url)
             }
         }
     }
-    
+
     private func convertToM4B(outputURL: URL) {
         guard !author.isEmpty && !title.isEmpty else {
             statusMessage = "Заполните автора и название книги"
@@ -252,60 +179,35 @@ struct ContentView: View {
         progress = 0.0
         statusMessage = ""
 
-        // Логирование для диагностики (только если включено)
-        if settings.showLogs {
-            addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
-            addLog("Количество выбранных файлов: \(selectedFiles.count)")
-            addLog("Выбранные файлы:")
-            for (index, url) in selectedFiles.enumerated() {
-                addLog("  [\(index)]: \(url.path)")
-            }
-            addLog("Выходной файл: \(outputURL.path)")
-            addLog("========================")
-        }
-
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,
             outputURL: outputURL,
             author: author,
             title: title,
-            coverImage: coverImage,
-            progressHandler: { progressValue in
-                DispatchQueue.main.async {
-                    self.progress = progressValue
-                }
-            },
-            logHandler: { logMessage in
-                DispatchQueue.main.async {
-                    self.addLog(logMessage)
-                }
-            },
-            completion: { result in
-                DispatchQueue.main.async {
-                    self.isConverting = false
-                    self.progress = 0.0
+            coverImage: coverImage
+        ) { progressValue in
+            DispatchQueue.main.async {
+                self.progress = progressValue
+            }
+        } completion: { result in
+            DispatchQueue.main.async {
+                self.isConverting = false
+                self.progress = 0.0
 
-                    self.addLog("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
-                    switch result {
-                    case .success:
-                        self.addLog("✅ УСПЕХ")
-                        self.statusMessage = "✅ Конвертация завершена успешно!"
-                        self.statusColor = .green
-                    case .failure(let error):
-                        self.addLog("❌ ОШИБКА: \(error.localizedDescription)")
-                        self.addLog("Подробности ошибки: \(error)")
-                        self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
-                        self.statusColor = .red
-                    }
-                    self.addLog("==========================")
+                switch result {
+                case .success:
+                    self.statusMessage = "✅ Конвертация завершена успешно!"
+                    self.statusColor = .green
+                case .failure(let error):
+                    self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
+                    self.statusColor = .red
                 }
             }
-        )
+        }
     }
 
     private func clearFileList() {
         selectedFiles = []
-        originalFiles = []
         author = ""
         title = ""
         coverImage = nil
@@ -315,25 +217,6 @@ struct ContentView: View {
     private func exitApplication() {
         NSApplication.shared.terminate(nil)
     }
-
-    private func addLog(_ message: String) {
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        let logEntry = "[\(timestamp)] \(message)\n"
-        logs += logEntry
-        print(message) // Оставляем print для консоли
-    }
-
-    private func copyLogsToClipboard() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(logs, forType: .string)
-        statusMessage = "Логи скопированы в буфер обмена"
-        statusColor = .blue
-    }
-
-    private func clearLogs() {
-        logs = ""
-    }
-
 }
 
 #Preview {
