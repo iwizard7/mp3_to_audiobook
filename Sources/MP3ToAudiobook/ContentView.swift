@@ -313,10 +313,6 @@ struct ContentView: View {
                     Divider()
 
                     HStack(spacing: 20) {
-                        Text(AppVersion.current.displayString)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
                         Text("© 2025 MP3ToAudiobook. Все права защищены.")
                             .font(.caption)
                             .foregroundColor(.secondary)
