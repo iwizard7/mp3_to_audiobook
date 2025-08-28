@@ -97,12 +97,22 @@ jobs:
         VERSION=$(git describe --tags --always --dirty)
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+    - name: Create Tag
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag ${{ steps.get_version.outputs.version }}
+        git push origin ${{ steps.get_version.outputs.version }}
+
     - name: Create Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      uses: softprops/action-gh-release@v1
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.get_version.outputs.version }}
-        name: Release ${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
         body: |
           Автоматический релиз MP3ToAudiobook
 
@@ -113,8 +123,16 @@ jobs:
 
           ## Скачать
           Скачайте `MP3ToAudiobook.dmg` для установки приложения.
-        files: ./MP3ToAudiobook.dmg
         draft: false
         prerelease: false
+
+    - name: Upload Release Asset
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./MP3ToAudiobook.dmg
+        asset_name: MP3ToAudiobook.dmg
+        asset_content_type: application/octet-stream
