@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var statusColor = Color.primary
     @State private var logs = ""
     @State private var isDropTargeted = false
+    @State private var showAdvancedSettings = false
 
     var body: some View {
         ScrollView {
@@ -104,58 +105,75 @@ struct ContentView: View {
                     TextField("Название книги", text: $title)
                         .textFieldStyle(.roundedBorder)
 
-                    TextField("Жанр", text: $genre)
-                        .textFieldStyle(.roundedBorder)
-
-                    TextField("Описание", text: $description)
-                        .textFieldStyle(.roundedBorder)
-
-                    HStack(spacing: 10) {
-                        TextField("Серия", text: $series)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: .infinity)
-
-                        TextField("Номер в серии", text: $seriesNumber)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 120)
-                    }
-
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Качество экспорта:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Picker("Качество", selection: $quality) {
-                                Text("Высокое").tag("high")
-                                Text("Среднее").tag("medium")
-                                Text("Низкое").tag("low")
-                            }
-                            .pickerStyle(.segmented)
+                    // Кнопка для показа/скрытия расширенных настроек
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showAdvancedSettings.toggle()
                         }
+                    }) {
+                        HStack {
+                            Text(showAdvancedSettings ? "Скрыть дополнительные настройки" : "Показать дополнительные настройки")
+                            Image(systemName: showAdvancedSettings ? "chevron.up" : "chevron.down")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
                     }
+                    .buttonStyle(.plain)
 
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Разделение на главы (минут):")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            HStack {
-                                Slider(value: Binding(
-                                    get: { Double(chapterDurationMinutes) },
-                                    set: { chapterDurationMinutes = Int($0) }
-                                ), in: 0...120, step: 5)
-                                .frame(maxWidth: 150)
+                    // Расширенные настройки (показываются при showAdvancedSettings = true)
+                    if showAdvancedSettings {
+                        VStack(spacing: 10) {
+                            TextField("Жанр", text: $genre)
+                                .textFieldStyle(.roundedBorder)
 
-                                TextField("", value: $chapterDurationMinutes, formatter: NumberFormatter())
+                            TextField("Описание", text: $description)
+                                .textFieldStyle(.roundedBorder)
+
+                            HStack(spacing: 10) {
+                                TextField("Серия", text: $series)
                                     .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
 
-                                Text("мин")
-                                    .foregroundColor(.secondary)
+                                TextField("Номер в серии", text: $seriesNumber)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 120)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Качество экспорта:")
                                     .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Picker("Качество", selection: $quality) {
+                                    Text("Высокое").tag("high")
+                                    Text("Среднее").tag("medium")
+                                    Text("Низкое").tag("low")
+                                }
+                                .pickerStyle(.segmented)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Разделение на главы (минут):")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                HStack {
+                                    Slider(value: Binding(
+                                        get: { Double(chapterDurationMinutes) },
+                                        set: { chapterDurationMinutes = Int($0) }
+                                    ), in: 0...120, step: 5)
+                                    .frame(maxWidth: 150)
+
+                                    TextField("", value: $chapterDurationMinutes, formatter: NumberFormatter())
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 60)
+                                        .multilineTextAlignment(.center)
+
+                                    Text("мин")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
                             }
                         }
+                        .transition(.opacity)
                     }
 
                     HStack {
@@ -305,8 +323,8 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        Button("https://github.com/dmitrijsibanov/MP3ToAudiobook") {
-                            if let url = URL(string: "https://github.com/dmitrijsibanov/MP3ToAudiobook") {
+                        Button("https://github.com/iwizard7/mp3_to_audiobook") {
+                            if let url = URL(string: "https://github.com/iwizard7/mp3_to_audiobook") {
                                 NSWorkspace.shared.open(url)
                             }
                         }
@@ -322,7 +340,7 @@ struct ContentView: View {
                 }
             }
             .padding()
-            .frame(minWidth: 500)
+            .frame(minWidth: 500, maxWidth: 600, maxHeight: 900)
         }
         .sheet(isPresented: $showCoverPreview) {
             if let image = coverImage {
@@ -469,6 +487,7 @@ struct ContentView: View {
         coverImage = nil
         statusMessage = ""
         logs = ""
+        showAdvancedSettings = false
     }
 
     private func exitApplication() {

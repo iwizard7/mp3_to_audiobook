@@ -26,6 +26,6 @@ struct AppVersion {
     }
 
     static let copyright = "© 2025 MP3ToAudiobook. Все права защищены."
-    static let githubURL = "https://github.com/dmitrijsibanov/MP3ToAudiobook"
+    static let githubURL = "https://github.com/iwizard7/mp3_to_audiobook"
     static let author = "Разработано с ❤️ для создания аудиокниг"
 }
