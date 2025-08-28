@@ -15,6 +15,12 @@ struct ContentView: View {
     @State private var selectedFiles: [URL] = []
     @State private var author = ""
     @State private var title = ""
+    @State private var genre = ""
+    @State private var description = ""
+    @State private var series = ""
+    @State private var seriesNumber = ""
+    @State private var quality = "high"
+    @State private var chapterDurationMinutes = 0
     @State private var coverImage: NSImage?
     @State private var isConverting = false
     @State private var progress = 0.0
@@ -97,6 +103,60 @@ struct ContentView: View {
 
                     TextField("Название книги", text: $title)
                         .textFieldStyle(.roundedBorder)
+
+                    TextField("Жанр", text: $genre)
+                        .textFieldStyle(.roundedBorder)
+
+                    TextField("Описание", text: $description)
+                        .textFieldStyle(.roundedBorder)
+
+                    HStack(spacing: 10) {
+                        TextField("Серия", text: $series)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: .infinity)
+
+                        TextField("Номер в серии", text: $seriesNumber)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                    }
+
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Качество экспорта:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("Качество", selection: $quality) {
+                                Text("Высокое").tag("high")
+                                Text("Среднее").tag("medium")
+                                Text("Низкое").tag("low")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Разделение на главы (минут):")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            HStack {
+                                Slider(value: Binding(
+                                    get: { Double(chapterDurationMinutes) },
+                                    set: { chapterDurationMinutes = Int($0) }
+                                ), in: 0...120, step: 5)
+                                .frame(maxWidth: 150)
+
+                                TextField("", value: $chapterDurationMinutes, formatter: NumberFormatter())
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 60)
+                                    .multilineTextAlignment(.center)
+
+                                Text("мин")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    }
 
                     HStack {
                         Button("Выбрать обложку") {
@@ -331,6 +391,12 @@ struct ContentView: View {
             addLog("Выходной файл: \(outputURL.path)")
             addLog("Автор: \(author)")
             addLog("Название: \(title)")
+            addLog("Жанр: \(genre.isEmpty ? "не указан" : genre)")
+            addLog("Описание: \(description.isEmpty ? "не указано" : description)")
+            addLog("Серия: \(series.isEmpty ? "не указана" : series)")
+            addLog("Номер в серии: \(seriesNumber.isEmpty ? "не указан" : seriesNumber)")
+            addLog("Качество: \(quality)")
+            addLog("Главы: \(chapterDurationMinutes > 0 ? "\(chapterDurationMinutes) мин" : "без разделения")")
             addLog("Обложка: \(coverImage != nil ? "есть" : "нет")")
             addLog("========================")
         }
@@ -340,15 +406,29 @@ struct ContentView: View {
             outputURL: outputURL,
             author: author,
             title: title,
-            coverImage: coverImage
-        ) { progressValue in
-            DispatchQueue.main.async {
-                self.progress = progressValue
+            genre: genre,
+            description: description,
+            series: series,
+            seriesNumber: seriesNumber,
+            quality: quality,
+            chapterDurationMinutes: chapterDurationMinutes,
+            coverImage: coverImage,
+            progressHandler: { progressValue in
+                DispatchQueue.main.async {
+                    self.progress = progressValue
+                    if self.settings.showLogs {
+                        self.addLog("Прогресс: \(Int(progressValue * 100))%")
+                    }
+                }
+            },
+            logHandler: { message in
                 if self.settings.showLogs {
-                    self.addLog("Прогресс: \(Int(progressValue * 100))%")
+                    DispatchQueue.main.async {
+                        self.addLog(message)
+                    }
                 }
             }
-        } completion: { result in
+        ) { result in
             DispatchQueue.main.async {
                 self.isConverting = false
                 self.progress = 0.0
@@ -380,6 +460,12 @@ struct ContentView: View {
         selectedFiles = []
         author = ""
         title = ""
+        genre = ""
+        description = ""
+        series = ""
+        seriesNumber = ""
+        quality = "high"
+        chapterDurationMinutes = 0
         coverImage = nil
         statusMessage = ""
         logs = ""
