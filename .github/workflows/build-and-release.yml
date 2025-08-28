@@ -149,11 +149,20 @@ jobs:
           "MP3ToAudiobook.dmg" \
           "MP3ToAudiobook.app"
 
-    - name: Get version
+    - name: Get version and changelog
       id: get_version
       run: |
-        VERSION=$(git rev-parse --short HEAD)
+        # Get current date for version
+        DATE=$(date +%Y.%m.%d)
+        BUILD_NUMBER=$(git rev-list --count HEAD)
+        VERSION="${DATE}.${BUILD_NUMBER}"
         echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+        # Get recent commits for changelog
+        CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s" | head -5)
+        echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+        echo "$CHANGELOG" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Create Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -163,17 +172,29 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: v${{ env.VERSION }}
-        release_name: Release v${{ env.VERSION }}
+        release_name: MP3ToAudiobook v${{ env.VERSION }}
         body: |
-          Автоматический релиз MP3ToAudiobook
+          ## 🚀 Новый релиз MP3ToAudiobook
 
-          ## Изменения
-          - Автоматическая сборка из коммита ${{ github.sha }}
-          - Собрано для macOS
-          - Ветка: ${{ github.ref_name }}
+          **Версия:** ${{ env.VERSION }}
+          **Коммит:** ${{ github.sha }}
+          **Ветка:** ${{ github.ref_name }}
+          **Дата сборки:** $(date +'%d.%m.%Y %H:%M')
 
-          ## Скачать
-          Скачайте `MP3ToAudiobook.dmg` для установки приложения.
+          ## 📝 Изменения в этом релизе
+
+          ${{ env.CHANGELOG }}
+
+          ## 📦 Скачать
+
+          Скачайте `MP3ToAudiobook.dmg` для установки приложения на macOS.
+
+          ## ✨ Особенности
+
+          - Современный интерфейс SwiftUI
+          - Конвертация MP3 в M4B с метаданными
+          - Поддержка обложек книг
+          - Автоматическое определение автора и названия
         draft: false
         prerelease: false
 
