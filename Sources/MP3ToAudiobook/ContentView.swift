@@ -237,7 +237,7 @@ struct ContentView: View {
                     Divider()
 
                     HStack(spacing: 20) {
-                        Text("Версия v2025.08.28.1.060543")
+                        Text(AppVersion.current.displayString)
                             .font(.caption)
                             .foregroundColor(.secondary)
 

@@ -6,7 +6,7 @@ struct AppVersion {
         minor: 8,
         patch: 28,
         build: 1,
-        timestamp: "060543"
+        timestamp: "080629"
     )
 
     struct Version {
