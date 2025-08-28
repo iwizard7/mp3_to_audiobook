@@ -183,6 +183,33 @@ struct ContentView: View {
         progress = 0.0
         statusMessage = ""
 
+        // Логирование для диагностики
+        print("=== НАЧАЛО КОНВЕРТАЦИИ ===")
+        print("Количество выбранных файлов: \(selectedFiles.count)")
+        print("Оригинальные файлы:")
+        for (index, url) in originalFiles.enumerated() {
+            print("  [\(index)]: \(url.path)")
+        }
+        print("Скопированные файлы:")
+        for (index, url) in selectedFiles.enumerated() {
+            print("  [\(index)]: \(url.path)")
+            // Проверяем существование файла
+            let fileManager = FileManager.default
+            let exists = fileManager.fileExists(atPath: url.path)
+            print("    Существует: \(exists)")
+            if exists {
+                do {
+                    let attributes = try fileManager.attributesOfItem(atPath: url.path)
+                    let fileSize = attributes[.size] as? Int64 ?? 0
+                    print("    Размер: \(fileSize) bytes")
+                } catch {
+                    print("    Ошибка получения атрибутов: \(error)")
+                }
+            }
+        }
+        print("Выходной файл: \(outputURL.path)")
+        print("========================")
+
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,
             outputURL: outputURL,
@@ -198,14 +225,19 @@ struct ContentView: View {
                 self.isConverting = false
                 self.progress = 0.0
 
+                print("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
                 switch result {
                 case .success:
+                    print("✅ УСПЕХ")
                     self.statusMessage = "✅ Конвертация завершена успешно!"
                     self.statusColor = .green
                 case .failure(let error):
+                    print("❌ ОШИБКА: \(error.localizedDescription)")
+                    print("Подробности ошибки: \(error)")
                     self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
                     self.statusColor = .red
                 }
+                print("==========================")
             }
         }
     }
@@ -229,32 +261,80 @@ struct ContentView: View {
     }
 
     private func copyFilesToTempDirectory(_ urls: [URL], completion: @escaping ([URL]) -> Void) {
+        print("=== КОПИРОВАНИЕ ФАЙЛОВ ВО ВРЕМЕННУЮ ДИРЕКТОРИЮ ===")
+        print("Количество файлов для копирования: \(urls.count)")
+
         DispatchQueue.global(qos: .background).async {
             let fileManager = FileManager.default
             let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
 
+            print("Временная директория: \(tempDirectory.path)")
+
             // Создаем временную директорию если её нет
-            try? fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+                print("Временная директория создана")
+            } catch {
+                print("Ошибка создания временной директории: \(error)")
+            }
 
             // Очищаем старую временную директорию
-            try? fileManager.removeItem(at: tempDirectory)
-            try? fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+            do {
+                try fileManager.removeItem(at: tempDirectory)
+                try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+                print("Старая временная директория очищена")
+            } catch {
+                print("Ошибка очистки временной директории: \(error)")
+            }
 
             var copiedURLs: [URL] = []
 
-            for url in urls {
+            for (index, url) in urls.enumerated() {
                 let fileName = url.lastPathComponent
                 let destinationURL = tempDirectory.appendingPathComponent(fileName)
 
-                do {
-                    try fileManager.copyItem(at: url, to: destinationURL)
-                    copiedURLs.append(destinationURL)
-                } catch {
-                    print("Ошибка копирования файла \(fileName): \(error)")
-                    // Если не удалось скопировать, используем оригинальный URL
+                print("Копирование файла [\(index)]: \(fileName)")
+                print("  Из: \(url.path)")
+                print("  В: \(destinationURL.path)")
+
+                // Проверяем существование исходного файла
+                let sourceExists = fileManager.fileExists(atPath: url.path)
+                print("  Исходный файл существует: \(sourceExists)")
+
+                if sourceExists {
+                    do {
+                        let sourceAttributes = try fileManager.attributesOfItem(atPath: url.path)
+                        let sourceSize = sourceAttributes[.size] as? Int64 ?? 0
+                        print("  Размер исходного файла: \(sourceSize) bytes")
+
+                        try fileManager.copyItem(at: url, to: destinationURL)
+                        copiedURLs.append(destinationURL)
+
+                        // Проверяем скопированный файл
+                        let destExists = fileManager.fileExists(atPath: destinationURL.path)
+                        print("  Скопированный файл существует: \(destExists)")
+
+                        if destExists {
+                            let destAttributes = try fileManager.attributesOfItem(atPath: destinationURL.path)
+                            let destSize = destAttributes[.size] as? Int64 ?? 0
+                            print("  Размер скопированного файла: \(destSize) bytes")
+                        }
+
+                        print("  ✅ Файл [\(index)] скопирован успешно")
+                    } catch {
+                        print("  ❌ Ошибка копирования файла \(fileName): \(error)")
+                        // Если не удалось скопировать, используем оригинальный URL
+                        copiedURLs.append(url)
+                        print("  Используем оригинальный URL")
+                    }
+                } else {
+                    print("  ❌ Исходный файл не существует")
                     copiedURLs.append(url)
                 }
             }
+
+            print("Всего скопировано файлов: \(copiedURLs.count)")
+            print("===============================================")
 
             DispatchQueue.main.async {
                 completion(copiedURLs)
