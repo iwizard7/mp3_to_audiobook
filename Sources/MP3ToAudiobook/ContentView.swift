@@ -3,8 +3,9 @@ import UniformTypeIdentifiers
 import AppKit
 
 extension UTType {
-    static var audio: UTType {
-        UTType(filenameExtension: "m4b") ?? .audio
+    static var audioFiles: [UTType] {
+        let extensions = ["mp3", "aac", "m4a", "wav", "aiff"]
+        return extensions.compactMap { UTType(filenameExtension: $0) } + [.audio]
     }
 }
 
@@ -41,7 +42,7 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                     .fileImporter(
                         isPresented: $showFileImporter,
-                        allowedContentTypes: [.mp3, .aac, .m4a, .wav, .audio],
+                        allowedContentTypes: UTType.audioFiles,
                         allowsMultipleSelection: true
                     ) { result in
                         switch result {
@@ -186,12 +187,20 @@ struct ContentView: View {
                             .foregroundColor(.red)
                         }
 
-                        ScrollView {
-                            Text(logs.isEmpty ? "Логи пока пусты" : logs)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
+                        ScrollViewReader { scrollViewProxy in
+                            ScrollView {
+                                Text(logs.isEmpty ? "Логи пока пусты" : logs)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                                    .id("logs_end")
+                            }
+                            .onChange(of: logs) { _ in
+                                withAnimation {
+                                    scrollViewProxy.scrollTo("logs_end", anchor: .bottom)
+                                }
+                            }
                         }
                         .frame(height: 150)
                         .background(Color.gray.opacity(0.1))
@@ -221,6 +230,35 @@ struct ContentView: View {
                     }
                     .buttonStyle(.bordered)
                     .foregroundColor(.gray)
+                }
+
+                // Информация о приложении
+                VStack(spacing: 4) {
+                    Divider()
+
+                    HStack(spacing: 20) {
+                        Text("Версия v2025.08.28.1.060543")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Text("© 2025 MP3ToAudiobook. Все права защищены.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Button("https://github.com/dmitrijsibanov/MP3ToAudiobook") {
+                            if let url = URL(string: "https://github.com/dmitrijsibanov/MP3ToAudiobook") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                    }
+                    .padding(.top, 8)
+
+                    Text("Разработано с ❤️ для создания аудиокниг")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                        .padding(.top, 2)
                 }
             }
             .padding()
@@ -263,7 +301,7 @@ struct ContentView: View {
 
     private func showSaveDialog() {
         let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.audio]
+        savePanel.allowedContentTypes = UTType.audioFiles
         savePanel.canCreateDirectories = true
         savePanel.nameFieldStringValue = "\(title).m4b"
 
