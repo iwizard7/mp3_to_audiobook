@@ -173,7 +173,7 @@ struct ContentView: View {
             }
 
             // Область логов
-            if showLogs {
+            if settings.showLogs {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text("Логи выполнения")
@@ -188,7 +188,7 @@ struct ContentView: View {
                         }
                         .buttonStyle(.bordered)
                         Button("Скрыть логи") {
-                            showLogs.toggle()
+                            settings.showLogs.toggle()
                         }
                         .buttonStyle(.bordered)
                     }
@@ -206,7 +206,7 @@ struct ContentView: View {
                 .padding(.top)
             } else {
                 Button("Показать логи") {
-                    showLogs.toggle()
+                    settings.showLogs.toggle()
                 }
                 .buttonStyle(.bordered)
                 .padding(.top)
