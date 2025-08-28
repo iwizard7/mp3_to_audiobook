@@ -2,6 +2,128 @@ import Foundation
 import AVFoundation
 import AppKit
 
+/// Структура для хранения извлеченных метаданных из аудио файла
+struct AudioMetadata {
+    var title: String?
+    var artist: String?
+    var album: String?
+    var genre: String?
+    var year: String?
+    var coverImage: NSImage?
+    var duration: TimeInterval?
+}
+
+/// Структура для агрегированных метаданных из нескольких файлов
+struct AggregatedMetadata {
+    var commonTitle: String?
+    var commonArtist: String?
+    var commonAlbum: String?
+    var commonGenre: String?
+    var coverImage: NSImage?
+    var totalDuration: TimeInterval
+    var fileCount: Int
+}
+
+/// Структура для работы с метаданными аудио файлов
+struct AudioMetadataExtractor {
+    /// Извлекает метаданные из аудио файла
+    static func extractMetadata(from url: URL) async -> AudioMetadata? {
+        let asset = AVAsset(url: url)
+        var metadata = AudioMetadata()
+
+        do {
+            // Извлекаем продолжительность
+            let duration = try await asset.load(.duration)
+            metadata.duration = CMTimeGetSeconds(duration)
+
+            // Извлекаем метаданные
+            let assetMetadata = try await asset.load(.metadata)
+
+            for item in assetMetadata {
+                guard let key = item.key?.description,
+                      let value = try? await item.load(.value) else { continue }
+
+                switch key {
+                case AVMetadataKey.commonKeyTitle.rawValue:
+                    metadata.title = value as? String
+                case AVMetadataKey.commonKeyArtist.rawValue:
+                    metadata.artist = value as? String
+                case AVMetadataKey.commonKeyAlbumName.rawValue:
+                    metadata.album = value as? String
+                case AVMetadataKey.commonKeyType.rawValue:
+                    metadata.genre = value as? String
+                case AVMetadataKey.id3MetadataKeyYear.rawValue:
+                    metadata.year = value as? String
+                case AVMetadataKey.commonKeyArtwork.rawValue:
+                    if let data = value as? Data {
+                        metadata.coverImage = NSImage(data: data)
+                    }
+                default:
+                    // Ищем жанр в других возможных ключах
+                    if key.lowercased().contains("genre") || key == "TCON" {
+                        metadata.genre = value as? String
+                    }
+                }
+            }
+
+            return metadata
+
+        } catch {
+            print("Ошибка при извлечении метаданных: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Агрегирует метаданные из нескольких файлов
+    static func aggregateMetadata(from urls: [URL]) async -> AggregatedMetadata {
+        var aggregated = AggregatedMetadata(totalDuration: 0, fileCount: urls.count)
+        var titles = [String]()
+        var artists = [String]()
+        var albums = [String]()
+        var genres = [String]()
+
+        for url in urls {
+            if let metadata = await extractMetadata(from: url) {
+                // Суммируем продолжительность
+                if let duration = metadata.duration {
+                    aggregated.totalDuration += duration
+                }
+
+                // Собираем метаданные для поиска наиболее частых значений
+                if let title = metadata.title { titles.append(title) }
+                if let artist = metadata.artist { artists.append(artist) }
+                if let album = metadata.album { albums.append(album) }
+                if let genre = metadata.genre { genres.append(genre) }
+
+                // Используем обложку из первого файла, который ее содержит
+                if aggregated.coverImage == nil, let cover = metadata.coverImage {
+                    aggregated.coverImage = cover
+                }
+            }
+        }
+
+        // Находим наиболее частые значения
+        aggregated.commonTitle = findMostCommon(in: titles)
+        aggregated.commonArtist = findMostCommon(in: artists)
+        aggregated.commonAlbum = findMostCommon(in: albums)
+        aggregated.commonGenre = findMostCommon(in: genres)
+
+        return aggregated
+    }
+
+    /// Находит наиболее часто встречающееся значение в массиве
+    private static func findMostCommon(in array: [String]) -> String? {
+        guard !array.isEmpty else { return nil }
+
+        var frequency = [String: Int]()
+        for item in array {
+            frequency[item, default: 0] += 1
+        }
+
+        return frequency.max(by: { $0.value < $1.value })?.key
+    }
+}
+
 class AudioConverter {
     static func convertAudioToM4B(
         inputURLs: [URL],
@@ -500,6 +622,7 @@ class AudioConverter {
                 print("========================")
             }
         }
+    
     }
 
     private static func convertToWAV(inputURL: URL, outputURL: URL, logHandler: @escaping (String) -> Void) async throws {

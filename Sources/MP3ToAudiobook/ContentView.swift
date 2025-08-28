@@ -54,10 +54,8 @@ struct ContentView: View {
                     ) { result in
                         switch result {
                         case .success(let urls):
-                            selectedFiles = urls
-                            if let folderURL = urls.first?.deletingLastPathComponent() {
-                                parseFolderName(folderURL)
-                            }
+                            selectedFiles = urls.sorted { $0.lastPathComponent < $1.lastPathComponent }
+                            extractAndFillMetadata(from: urls)
                         case .failure(let error):
                             print("Ошибка выбора файлов: \(error)")
                         }
@@ -377,6 +375,77 @@ struct ContentView: View {
         }
     }
 
+    /// Извлекает метаданные из файлов и автоматически заполняет поля
+    private func extractAndFillMetadata(from urls: [URL]) {
+        Task {
+            // Сначала пытаемся извлечь метаданные из файлов
+            let aggregatedMetadata = await AudioMetadataExtractor.aggregateMetadata(from: urls)
+
+            // Заполняем поля на основе извлеченных метаданных
+            DispatchQueue.main.async {
+                if let commonArtist = aggregatedMetadata.commonArtist, self.author.isEmpty {
+                    self.author = commonArtist
+                }
+
+                if let commonTitle = aggregatedMetadata.commonTitle, self.title.isEmpty {
+                    self.title = commonTitle
+                } else if let commonAlbum = aggregatedMetadata.commonAlbum, self.title.isEmpty {
+                    self.title = commonAlbum
+                }
+
+                if let commonGenre = aggregatedMetadata.commonGenre, self.genre.isEmpty {
+                    self.genre = commonGenre
+                }
+
+                // Устанавливаем обложку, если она найдена и пользователь еще не выбрал свою
+                if self.coverImage == nil, let extractedCover = aggregatedMetadata.coverImage {
+                    self.coverImage = extractedCover
+                }
+
+                // Если поля все еще пустые, используем информацию из имени папки
+                if self.author.isEmpty || self.title.isEmpty {
+                    if let folderURL = urls.first?.deletingLastPathComponent() {
+                        self.parseFolderName(folderURL)
+                    }
+                }
+
+                // Логируем извлеченные метаданные
+                if self.settings.showLogs {
+                    self.addLog("=== ИЗВЛЕЧЕННЫЕ МЕТАДАННЫЕ ===")
+                    self.addLog("Общее количество файлов: \(aggregatedMetadata.fileCount)")
+                    self.addLog("Общая длительность: \(self.formatDuration(aggregatedMetadata.totalDuration))")
+                    if let artist = aggregatedMetadata.commonArtist {
+                        self.addLog("Общий исполнитель: \(artist)")
+                    }
+                    if let title = aggregatedMetadata.commonTitle {
+                        self.addLog("Общее название: \(title)")
+                    }
+                    if let album = aggregatedMetadata.commonAlbum {
+                        self.addLog("Общий альбом: \(album)")
+                    }
+                    if let genre = aggregatedMetadata.commonGenre {
+                        self.addLog("Общий жанр: \(genre)")
+                    }
+                    self.addLog("Обложка: \(aggregatedMetadata.coverImage != nil ? "найдена" : "не найдена")")
+                    self.addLog("================================")
+                }
+            }
+        }
+    }
+
+    /// Форматирует длительность в читаемый вид
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        let seconds = Int(duration) % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+
     private func showSaveDialog() {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = UTType.audioFiles
@@ -543,9 +612,7 @@ struct ContentView: View {
 
         if !audioFiles.isEmpty {
             selectedFiles = audioFiles.sorted { $0.lastPathComponent < $1.lastPathComponent }
-            if let folderURL = audioFiles.first?.deletingLastPathComponent() {
-                parseFolderName(folderURL)
-            }
+            extractAndFillMetadata(from: audioFiles)
         }
     }
 
