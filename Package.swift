@@ -13,7 +13,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MP3ToAudiobook",
-            dependencies: []
+            dependencies: [],
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "/usr/lib/swift"])
+            ]
         )
     ]
 )

@@ -17,8 +17,8 @@ struct ContentView: View {
     @State private var showFileImporter = false
     @State private var showCoverImporter = false
     @State private var showSavePanel = false
-    @State private var errorMessage = ""
-    @State private var showError = false
+    @State private var statusMessage = ""
+    @State private var statusColor = Color.primary
     
     var body: some View {
         VStack(spacing: 20) {
@@ -109,11 +109,24 @@ struct ContentView: View {
                     .progressViewStyle(.linear)
                 Text("Конвертация... \(Int(progress * 100))%")
             }
-        }
-        .alert("Ошибка", isPresented: $showError) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage)
+
+            // Сообщение о статусе
+            if !statusMessage.isEmpty {
+                Text(statusMessage)
+                    .foregroundColor(statusColor)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 5)
+            }
+
+            // Кнопка очистки списка
+            if !selectedFiles.isEmpty && !isConverting {
+                Button("Очистить список") {
+                    clearFileList()
+                }
+                .buttonStyle(.bordered)
+                .foregroundColor(.red)
+            }
         }
         .padding()
         .frame(minWidth: 500, minHeight: 400)
@@ -146,14 +159,15 @@ struct ContentView: View {
     
     private func convertToM4B(outputURL: URL) {
         guard !author.isEmpty && !title.isEmpty else {
-            errorMessage = "Заполните автора и название книги"
-            showError = true
+            statusMessage = "Заполните автора и название книги"
+            statusColor = .red
             return
         }
-        
+
         isConverting = true
         progress = 0.0
-        
+        statusMessage = ""
+
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,
             outputURL: outputURL,
@@ -168,17 +182,25 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 self.isConverting = false
                 self.progress = 0.0
-                
+
                 switch result {
                 case .success:
-                    self.errorMessage = "Конвертация завершена успешно!"
-                    self.showError = true
+                    self.statusMessage = "✅ Конвертация завершена успешно!"
+                    self.statusColor = .green
                 case .failure(let error):
-                    self.errorMessage = "Ошибка конвертации: \(error.localizedDescription)"
-                    self.showError = true
+                    self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
+                    self.statusColor = .red
                 }
             }
         }
+    }
+
+    private func clearFileList() {
+        selectedFiles = []
+        author = ""
+        title = ""
+        coverImage = nil
+        statusMessage = ""
     }
 }
 
