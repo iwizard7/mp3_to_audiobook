@@ -94,16 +94,8 @@ jobs:
     - name: Get version
       id: get_version
       run: |
-        VERSION=$(git describe --tags --always --dirty)
+        VERSION=$(git rev-parse --short HEAD)
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-    - name: Create Tag
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag ${{ steps.get_version.outputs.version }}
-        git push origin ${{ steps.get_version.outputs.version }}
 
     - name: Create Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -111,8 +103,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: Release ${{ steps.get_version.outputs.version }}
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Release v${{ steps.get_version.outputs.version }}
         body: |
           Автоматический релиз MP3ToAudiobook
 
