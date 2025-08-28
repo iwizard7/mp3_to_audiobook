@@ -8,6 +8,8 @@ extension UTType {
 }
 
 struct ContentView: View {
+    static var shared = ContentView()
+
     @State private var selectedFiles: [URL] = []
     @State private var originalFiles: [URL] = [] // Оригинальные URL для отображения имен
     @State private var author = ""
@@ -20,8 +22,8 @@ struct ContentView: View {
     @State private var showSavePanel = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
+    @State static var showLogs = false
     @State private var logs = ""
-    @State private var showLogs = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -123,6 +125,35 @@ struct ContentView: View {
                     .padding(.vertical, 5)
             }
 
+            // Логи (показываются только если включено)
+            if showLogs && !logs.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("📋 Логи:")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(logs, id: \.self) { log in
+                                Text(log)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(8)
+                    }
+                    .frame(height: 150)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                .padding(.vertical, 10)
+            }
+
             // Кнопки управления
             HStack(spacing: 20) {
                 // Кнопка очистки списка
@@ -222,15 +253,17 @@ struct ContentView: View {
         progress = 0.0
         statusMessage = ""
 
-        // Логирование для диагностики
-        addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
-        addLog("Количество выбранных файлов: \(selectedFiles.count)")
-        addLog("Выбранные файлы:")
-        for (index, url) in selectedFiles.enumerated() {
-            addLog("  [\(index)]: \(url.path)")
+        // Логирование для диагностики (только если включено)
+        if showLogs {
+            addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
+            addLog("Количество выбранных файлов: \(selectedFiles.count)")
+            addLog("Выбранные файлы:")
+            for (index, url) in selectedFiles.enumerated() {
+                addLog("  [\(index)]: \(url.path)")
+            }
+            addLog("Выходной файл: \(outputURL.path)")
+            addLog("========================")
         }
-        addLog("Выходной файл: \(outputURL.path)")
-        addLog("========================")
 
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,

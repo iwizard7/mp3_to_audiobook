@@ -180,7 +180,7 @@ jobs:
           **Версия:** ${{ env.VERSION }}
           **Коммит:** ${{ github.sha }}
           **Ветка:** ${{ github.ref_name }}
-          **Дата сборки:** $(date +'%d.%m.%Y %H:%M')
+          **Дата сборки:** ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
 
           ## 📝 Изменения в этом релизе
 

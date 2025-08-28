@@ -10,6 +10,21 @@ struct MP3ToAudiobookApp: App {
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
+        .commands {
+            // Меню View
+            CommandMenu("Вид") {
+                Toggle("Показывать логи", isOn: ContentView.shared.$showLogs)
+                    .keyboardShortcut("L", modifiers: .command)
+            }
+
+            // Меню Help
+            CommandMenu("Справка") {
+                Button("О программе") {
+                    NSApplication.shared.orderFrontStandardAboutPanel()
+                }
+                .keyboardShortcut("?", modifiers: .command)
+            }
+        }
     }
 }
 
