@@ -39,6 +39,15 @@ struct AudioMetadataExtractor {
             // Извлекаем метаданные
             let assetMetadata = try await asset.load(.metadata)
 
+            // Отладочная информация о всех доступных метаданных
+            print("=== ДОСТУПНЫЕ МЕТАДАННЫЕ ДЛЯ \(url.lastPathComponent) ===")
+            for item in assetMetadata {
+                if let key = item.key?.description {
+                    print("Ключ: \(key)")
+                }
+            }
+            print("================================================")
+
             for item in assetMetadata {
                 guard let key = item.key?.description,
                       let value = try? await item.load(.value) else { continue }
@@ -46,26 +55,55 @@ struct AudioMetadataExtractor {
                 switch key {
                 case AVMetadataKey.commonKeyTitle.rawValue:
                     metadata.title = value as? String
+                    print("Найдено название: \(metadata.title ?? "nil")")
                 case AVMetadataKey.commonKeyArtist.rawValue:
                     metadata.artist = value as? String
+                    print("Найден исполнитель: \(metadata.artist ?? "nil")")
                 case AVMetadataKey.commonKeyAlbumName.rawValue:
                     metadata.album = value as? String
+                    print("Найден альбом: \(metadata.album ?? "nil")")
                 case AVMetadataKey.commonKeyType.rawValue:
                     metadata.genre = value as? String
+                    print("Найден жанр: \(metadata.genre ?? "nil")")
                 case AVMetadataKey.id3MetadataKeyYear.rawValue:
                     metadata.year = value as? String
+                    print("Найден год: \(metadata.year ?? "nil")")
                 case AVMetadataKey.commonKeyArtwork.rawValue:
                     if let data = value as? Data {
                         metadata.coverImage = NSImage(data: data)
+                        print("Найдена обложка через commonKeyArtwork (\(data.count) байт)")
                     }
                 default:
                     // Ищем жанр в других возможных ключах
                     if key.lowercased().contains("genre") || key == "TCON" {
                         metadata.genre = value as? String
+                        print("Найден жанр через альтернативный ключ: \(metadata.genre ?? "nil")")
+                    }
+
+                    // Ищем обложку в других возможных ключах
+                    if key.lowercased().contains("artwork") || key == "APIC" || key == "PIC" {
+                        if let data = value as? Data {
+                            metadata.coverImage = NSImage(data: data)
+                            print("Найдена обложка через альтернативный ключ \(key) (\(data.count) байт)")
+                        }
+                    }
+
+                    // Ищем обложку в iTunes метаданных
+                    if key.hasPrefix("----:com.apple.iTunes:") && key.contains("artwork") {
+                        if let data = value as? Data {
+                            metadata.coverImage = NSImage(data: data)
+                            print("Найдена обложка через iTunes метаданные (\(data.count) байт)")
+                        }
                     }
                 }
             }
 
+            // Если обложка не найдена через метаданные, пробуем альтернативные методы
+            if metadata.coverImage == nil {
+                metadata.coverImage = await extractCoverImage(from: url)
+            }
+
+            print("Результат извлечения: обложка \(metadata.coverImage != nil ? "найдена" : "не найдена")")
             return metadata
 
         } catch {
@@ -121,6 +159,124 @@ struct AudioMetadataExtractor {
         }
 
         return frequency.max(by: { $0.value < $1.value })?.key
+    }
+
+    /// Извлекает обложку из аудио файла с помощью альтернативных методов
+    static func extractCoverImage(from url: URL) async -> NSImage? {
+        print("Пытаемся извлечь обложку из: \(url.lastPathComponent)")
+
+        // Метод 1: Используем AVAsset
+        if let assetCover = await extractCoverFromAsset(url) {
+            print("Обложка извлечена через AVAsset")
+            return assetCover
+        }
+
+        // Метод 2: Используем AVAudioFile для чтения ID3 тегов
+        if let audioFileCover = await extractCoverFromAudioFile(url) {
+            print("Обложка извлечена через AVAudioFile")
+            return audioFileCover
+        }
+
+        // Метод 3: Прямое чтение файла и поиск ID3 тегов
+        if let id3Cover = extractCoverFromID3Tags(url) {
+            print("Обложка извлечена через ID3 теги")
+            return id3Cover
+        }
+
+        print("Обложка не найдена")
+        return nil
+    }
+
+    /// Извлечение обложки через AVAsset
+    private static func extractCoverFromAsset(_ url: URL) async -> NSImage? {
+        let asset = AVAsset(url: url)
+
+        do {
+            let metadata = try await asset.load(.metadata)
+            for item in metadata {
+                if let key = item.key?.description,
+                   (key == AVMetadataKey.commonKeyArtwork.rawValue ||
+                    key.lowercased().contains("artwork") ||
+                    key == "APIC" || key == "PIC") {
+
+                    if let data = try? await item.load(.value) as? Data {
+                        return NSImage(data: data)
+                    }
+                }
+            }
+        } catch {
+            print("Ошибка при извлечении через AVAsset: \(error.localizedDescription)")
+        }
+
+        return nil
+    }
+
+    /// Извлечение обложки через AVAudioFile (альтернативный метод)
+    private static func extractCoverFromAudioFile(_ url: URL) async -> NSImage? {
+        // Этот метод пока не реализован, так как AVAudioFile не предоставляет прямой доступ к метаданным
+        // Можно реализовать в будущем с помощью низкоуровневых API
+        return nil
+    }
+
+    /// Извлечение обложки через прямое чтение ID3 тегов
+    private static func extractCoverFromID3Tags(_ url: URL) -> NSImage? {
+        do {
+            let data = try Data(contentsOf: url)
+
+            // Ищем ID3v2 тег
+            if data.count > 10 && data[0...2] == Data([0x49, 0x44, 0x33]) { // "ID3"
+                print("Найден ID3v2 тег")
+
+                // Пропускаем заголовок ID3 (10 байт)
+                var offset = 10
+
+                while offset < data.count - 10 {
+                    // Читаем фрейм
+                    let frameID = String(data: data[offset...offset+3], encoding: .utf8)
+                    offset += 4
+
+                    // Размер фрейма (4 байта, big-endian)
+                    let size = UInt32(data[offset]) << 24 |
+                              UInt32(data[offset+1]) << 16 |
+                              UInt32(data[offset+2]) << 8 |
+                              UInt32(data[offset+3])
+                    offset += 4
+
+                    // Флаги (2 байта)
+                    offset += 2
+
+                    if frameID == "APIC" { // Attached picture frame
+                        print("Найден APIC фрейм, размер: \(size)")
+
+                        // Пропускаем текстовую информацию о картинке
+                        var imageOffset = offset
+                        while imageOffset < offset + Int(size) && data[imageOffset] != 0 {
+                            imageOffset += 1
+                        }
+
+                        // Ищем начало JPEG или PNG
+                        while imageOffset < offset + Int(size) - 4 {
+                            if data[imageOffset...imageOffset+1] == Data([0xFF, 0xD8]) { // JPEG SOI
+                                let imageData = data[imageOffset..<offset+Int(size)]
+                                print("Найдены JPEG данные, размер: \(imageData.count)")
+                                return NSImage(data: imageData)
+                            } else if data[imageOffset...imageOffset+3] == Data([0x89, 0x50, 0x4E, 0x47]) { // PNG signature
+                                let imageData = data[imageOffset..<offset+Int(size)]
+                                print("Найдены PNG данные, размер: \(imageData.count)")
+                                return NSImage(data: imageData)
+                            }
+                            imageOffset += 1
+                        }
+                    }
+
+                    offset += Int(size)
+                }
+            }
+        } catch {
+            print("Ошибка при чтении ID3 тегов: \(error.localizedDescription)")
+        }
+
+        return nil
     }
 }
 
