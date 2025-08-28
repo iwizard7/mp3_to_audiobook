@@ -20,36 +20,63 @@ struct ContentView: View {
     @State private var showFileImporter = false
     @State private var showCoverImporter = false
     @State private var showSavePanel = false
+    @State private var showCoverPreview = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
     @State private var logs = ""
+    @State private var isDropTargeted = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Text("MP3 в M4B Конвертер")
+                Text("Аудио в M4B Конвертер")
                     .font(.largeTitle)
                     .fontWeight(.bold)
 
-                // Выбор файлов
-                Button("Выбрать MP3 файлы") {
-                    showFileImporter = true
-                }
-                .buttonStyle(.borderedProminent)
-                .fileImporter(
-                    isPresented: $showFileImporter,
-                    allowedContentTypes: [.mp3],
-                    allowsMultipleSelection: true
-                ) { result in
-                    switch result {
-                    case .success(let urls):
-                        selectedFiles = urls
-                        if let folderURL = urls.first?.deletingLastPathComponent() {
-                            parseFolderName(folderURL)
-                        }
-                    case .failure(let error):
-                        print("Ошибка выбора файлов: \(error)")
+                // Выбор файлов с drag & drop
+                VStack {
+                    Button("Выбрать аудиофайлы") {
+                        showFileImporter = true
                     }
+                    .buttonStyle(.borderedProminent)
+                    .fileImporter(
+                        isPresented: $showFileImporter,
+                        allowedContentTypes: [.mp3, .aac, .m4a, .wav, .audio],
+                        allowsMultipleSelection: true
+                    ) { result in
+                        switch result {
+                        case .success(let urls):
+                            selectedFiles = urls
+                            if let folderURL = urls.first?.deletingLastPathComponent() {
+                                parseFolderName(folderURL)
+                            }
+                        case .failure(let error):
+                            print("Ошибка выбора файлов: \(error)")
+                        }
+                    }
+
+                    // Drag & Drop зона
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [5]))
+                            .foregroundColor(.gray.opacity(0.5))
+                            .frame(height: 80)
+                            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                                handleDrop(providers: providers)
+                            }
+
+                        VStack(spacing: 8) {
+                            Image(systemName: "arrow.down.doc")
+                                .font(.system(size: 24))
+                                .foregroundColor(.gray)
+                            Text("Перетащите аудиофайлы или папки сюда")
+                                .foregroundColor(.gray)
+                                .font(.caption)
+                        }
+                        .opacity(isDropTargeted ? 0.5 : 1.0)
+                    }
+                    .background(isDropTargeted ? Color.blue.opacity(0.1) : Color.clear)
+                    .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
                 }
 
                 if !selectedFiles.isEmpty {
@@ -77,10 +104,26 @@ struct ContentView: View {
                         .buttonStyle(.bordered)
 
                         if let image = coverImage {
-                            Image(nsImage: image)
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                            Button(action: { showCoverPreview = true }) {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .frame(width: 50, height: 50)
+                                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 5)
+                                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [5]))
+                                    .foregroundColor(.gray.opacity(0.5))
+                                    .frame(width: 50, height: 50)
+                                Image(systemName: "photo")
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
                 }
@@ -183,6 +226,28 @@ struct ContentView: View {
             .padding()
             .frame(minWidth: 500)
         }
+        .sheet(isPresented: $showCoverPreview) {
+            if let image = coverImage {
+                VStack {
+                    Text("Превью обложки")
+                        .font(.headline)
+                        .padding()
+
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 300, maxHeight: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    Button("Закрыть") {
+                        showCoverPreview = false
+                    }
+                    .buttonStyle(.bordered)
+                    .padding()
+                }
+                .padding()
+            }
+        }
     }
 
     private func parseFolderName(_ folderURL: URL) {
@@ -232,7 +297,7 @@ struct ContentView: View {
             addLog("========================")
         }
 
-        AudioConverter.convertMP3ToM4B(
+        AudioConverter.convertAudioToM4B(
             inputURLs: selectedFiles,
             outputURL: outputURL,
             author: author,
@@ -294,6 +359,73 @@ struct ContentView: View {
 
     private func clearLogs() {
         logs = ""
+    }
+
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        var urls: [URL] = []
+
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier("public.file-url") {
+                provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (item, error) in
+                    if let data = item as? Data,
+                       let urlString = String(data: data, encoding: .utf8),
+                       let url = URL(string: urlString) {
+                        DispatchQueue.main.async {
+                            urls.append(url)
+                            if urls.count == providers.count {
+                                processDroppedURLs(urls)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    private func processDroppedURLs(_ urls: [URL]) {
+        var audioFiles: [URL] = []
+
+        for url in urls {
+            if url.hasDirectoryPath {
+                // Это папка - ищем аудиофайлы
+                if let folderFiles = findAudioFiles(in: url) {
+                    audioFiles.append(contentsOf: folderFiles)
+                }
+            } else if isAudioFile(url) {
+                // Это аудиофайл
+                audioFiles.append(url)
+            }
+        }
+
+        if !audioFiles.isEmpty {
+            selectedFiles = audioFiles.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            if let folderURL = audioFiles.first?.deletingLastPathComponent() {
+                parseFolderName(folderURL)
+            }
+        }
+    }
+
+    private func findAudioFiles(in directory: URL) -> [URL]? {
+        let fileManager = FileManager.default
+        let audioExtensions = ["mp3", "aac", "m4a", "wav", "aiff"]
+        var audioFiles: [URL] = []
+
+        let enumerator = fileManager.enumerator(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+
+        while let fileURL = enumerator?.nextObject() as? URL {
+            let ext = fileURL.pathExtension.lowercased()
+            if audioExtensions.contains(ext) {
+                audioFiles.append(fileURL)
+            }
+        }
+
+        return audioFiles.isEmpty ? nil : audioFiles
+    }
+
+    private func isAudioFile(_ url: URL) -> Bool {
+        let audioExtensions = ["mp3", "aac", "m4a", "wav", "aiff"]
+        return audioExtensions.contains(url.pathExtension.lowercased())
     }
 }
 

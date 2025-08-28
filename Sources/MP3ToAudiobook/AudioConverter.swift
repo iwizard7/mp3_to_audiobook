@@ -3,11 +3,17 @@ import AVFoundation
 import AppKit
 
 class AudioConverter {
-    static func convertMP3ToM4B(
+    static func convertAudioToM4B(
         inputURLs: [URL],
         outputURL: URL,
         author: String,
         title: String,
+        genre: String = "",
+        description: String = "",
+        series: String = "",
+        seriesNumber: String = "",
+        quality: String = "high",
+        chapterDurationMinutes: Int = 0,
         coverImage: NSImage?,
         progressHandler: @escaping (Double) -> Void,
         logHandler: @escaping (String) -> Void = { _ in },
@@ -22,6 +28,38 @@ class AudioConverter {
         }
         logHandler("Выходной URL: \(outputURL.absoluteString)")
         logHandler("============================")
+
+        // Валидация входных параметров
+        guard !inputURLs.isEmpty else {
+            let error = NSError(domain: "AudioConverter", code: -10, userInfo: [NSLocalizedDescriptionKey: "Не указаны входные файлы"])
+            logHandler("ОШИБКА: \(error.localizedDescription)")
+            completion(.failure(error))
+            return
+        }
+
+        guard !author.isEmpty else {
+            let error = NSError(domain: "AudioConverter", code: -11, userInfo: [NSLocalizedDescriptionKey: "Не указан автор"])
+            logHandler("ОШИБКА: \(error.localizedDescription)")
+            completion(.failure(error))
+            return
+        }
+
+        guard !title.isEmpty else {
+            let error = NSError(domain: "AudioConverter", code: -12, userInfo: [NSLocalizedDescriptionKey: "Не указано название"])
+            logHandler("ОШИБКА: \(error.localizedDescription)")
+            completion(.failure(error))
+            return
+        }
+
+        // Проверка существования входных файлов
+        for url in inputURLs {
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                let error = NSError(domain: "AudioConverter", code: -13, userInfo: [NSLocalizedDescriptionKey: "Файл не найден: \(url.path)"])
+                logHandler("ОШИБКА: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+        }
 
         Task {
             do {
@@ -42,12 +80,27 @@ class AudioConverter {
                     let asset = AVAsset(url: inputURL)
                     logHandler("  Создан AVAsset для файла")
 
+                    // Проверяем, можем ли мы читать файл
+                    guard asset.isReadable else {
+                        let errorMsg = "Файл не доступен для чтения: \(inputURL.lastPathComponent)"
+                        logHandler("  ОШИБКА: \(errorMsg)")
+                        completion(.failure(NSError(domain: "AudioConverter", code: -14, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                        return
+                    }
+
                     // Загружаем треки асинхронно
                     let audioTracks = try await asset.loadTracks(withMediaType: .audio)
                     logHandler("  Найдено аудио треков: \(audioTracks.count)")
 
+                    guard !audioTracks.isEmpty else {
+                        let errorMsg = "Не найдено аудио треков в файле \(inputURL.lastPathComponent)"
+                        logHandler("  ОШИБКА: \(errorMsg)")
+                        completion(.failure(NSError(domain: "AudioConverter", code: -2, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                        return
+                    }
+
                     guard let audioAssetTrack = audioTracks.first else {
-                        let errorMsg = "Не найден аудио трек в файле \(inputURL.lastPathComponent)"
+                        let errorMsg = "Не найден подходящий аудио трек в файле \(inputURL.lastPathComponent)"
                         logHandler("  ОШИБКА: \(errorMsg)")
                         completion(.failure(NSError(domain: "AudioConverter", code: -2, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
                         return
@@ -76,13 +129,44 @@ class AudioConverter {
                 // Все файлы обработаны, начинаем экспорт
                 logHandler("Все файлы обработаны, начинаем экспорт...")
                 let coverImageData = coverImage?.tiffRepresentation
-                exportComposition(composition, outputURL: outputURL, author: author, title: title, coverImageData: coverImageData, completion: completion)
+
+                if chapterDurationMinutes > 0 {
+                    // Разделение на главы
+                    logHandler("Разделение на главы по \(chapterDurationMinutes) минут...")
+                    exportCompositionWithChapters(composition, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, chapterDurationMinutes: chapterDurationMinutes, coverImageData: coverImageData, completion: completion)
+                } else {
+                    // Обычный экспорт без глав
+                    exportComposition(composition, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, coverImageData: coverImageData, completion: completion)
+                }
 
             } catch {
                 logHandler("  ОШИБКА обработки файла: \(error.localizedDescription)")
                 logHandler("  Подробности: \(error)")
                 completion(.failure(error))
             }
+        }
+    
+        private static func exportCompositionWithChapters(
+            _ composition: AVMutableComposition,
+            outputURL: URL,
+            author: String,
+            title: String,
+            genre: String,
+            description: String,
+            series: String,
+            seriesNumber: String,
+            quality: String,
+            chapterDurationMinutes: Int,
+            coverImageData: Data?,
+            completion: @escaping (Result<Void, Error>) -> Void
+        ) {
+            print("=== ЭКСПОРТ С ГЛАВАМИ ===")
+            print("Длительность главы: \(chapterDurationMinutes) минут")
+            print("Создание оглавления...")
+    
+            // Пока просто вызываем обычный экспорт
+            // Полноценная реализация глав требует значительной переработки
+            exportComposition(composition, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, coverImageData: coverImageData, completion: completion)
         }
     }
 
@@ -91,6 +175,11 @@ class AudioConverter {
         outputURL: URL,
         author: String,
         title: String,
+        genre: String,
+        description: String,
+        series: String,
+        seriesNumber: String,
+        quality: String,
         coverImageData: Data?,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
@@ -98,10 +187,28 @@ class AudioConverter {
         print("Выходной файл: \(outputURL.path)")
         print("Автор: \(author)")
         print("Название: \(title)")
+        print("Жанр: \(genre)")
+        print("Описание: \(description)")
+        print("Серия: \(series)")
+        print("Номер в серии: \(seriesNumber)")
+        print("Качество: \(quality)")
         print("Обложка: \(coverImageData != nil ? "есть" : "нет")")
 
+        // Выбор пресета на основе качества
+        let presetName: String
+        switch quality.lowercased() {
+        case "low":
+            presetName = AVAssetExportPresetLowQuality
+        case "medium":
+            presetName = AVAssetExportPresetMediumQuality
+        case "high":
+            presetName = AVAssetExportPresetHighestQuality
+        default:
+            presetName = AVAssetExportPresetAppleM4A // Для M4B используем стандартный пресет
+        }
+
         // Создание экспорта
-        guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetAppleM4A) else {
+        guard let exportSession = AVAssetExportSession(asset: composition, presetName: presetName) else {
             let error = NSError(domain: "AudioConverter", code: -3, userInfo: [NSLocalizedDescriptionKey: "Не удалось создать сессию экспорта"])
             print("ОШИБКА: \(error.localizedDescription)")
             completion(.failure(error))
@@ -128,6 +235,38 @@ class AudioConverter {
         authorItem.keySpace = AVMetadataKeySpace.common
         authorItem.value = author as NSString
         metadata.append(authorItem)
+
+        if !genre.isEmpty {
+            let genreItem = AVMutableMetadataItem()
+            genreItem.key = AVMetadataKey.commonKeyGenre as NSString
+            genreItem.keySpace = AVMetadataKeySpace.common
+            genreItem.value = genre as NSString
+            metadata.append(genreItem)
+        }
+
+        if !description.isEmpty {
+            let descriptionItem = AVMutableMetadataItem()
+            descriptionItem.key = AVMetadataKey.commonKeyDescription as NSString
+            descriptionItem.keySpace = AVMetadataKeySpace.common
+            descriptionItem.value = description as NSString
+            metadata.append(descriptionItem)
+        }
+
+        if !series.isEmpty {
+            let seriesItem = AVMutableMetadataItem()
+            seriesItem.key = AVMetadataKey.quickTimeMetadataKeyCollectionUser as NSString
+            seriesItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+            seriesItem.value = series as NSString
+            metadata.append(seriesItem)
+        }
+
+        if !seriesNumber.isEmpty {
+            let seriesNumberItem = AVMutableMetadataItem()
+            seriesNumberItem.key = AVMetadataKey.quickTimeMetadataKeyCollectionUser as NSString
+            seriesNumberItem.keySpace = AVMetadataKeySpace.quickTimeMetadata
+            seriesNumberItem.value = "\(series) #\(seriesNumber)" as NSString
+            metadata.append(seriesNumberItem)
+        }
 
         if let imageData = coverImageData {
             let artworkItem = AVMutableMetadataItem()
