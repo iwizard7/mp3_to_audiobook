@@ -1,0 +1,130 @@
+name: Build and Release MP3ToAudiobook
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Install Swift
+      run: |
+        brew install swift
+
+    - name: Cache Swift dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          .build
+          ~/Library/Developer/Xcode/DerivedData
+        key: ${{ runner.os }}-swift-${{ hashFiles('**/Package.swift') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+
+    - name: Build application
+      run: |
+        swift build --configuration release
+
+    - name: Create app bundle
+      run: |
+        # Create app bundle structure
+        mkdir -p MP3ToAudiobook.app/Contents/MacOS
+        mkdir -p MP3ToAudiobook.app/Contents/Resources
+
+        # Copy executable
+        cp .build/release/MP3ToAudiobook MP3ToAudiobook.app/Contents/MacOS/
+
+        # Create Info.plist
+        cat > MP3ToAudiobook.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>MP3ToAudiobook</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.mp3toaudiobook.app</string>
+            <key>CFBundleName</key>
+            <string>MP3ToAudiobook</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>13.0</string>
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Create DMG
+      run: |
+        # Install create-dmg if not available
+        if ! command -v create-dmg &> /dev/null; then
+          brew install create-dmg
+        fi
+
+        # Create DMG
+        create-dmg \
+          --volname "MP3ToAudiobook" \
+          --volicon "MP3ToAudiobook.app" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "MP3ToAudiobook.app" 200 190 \
+          --hide-extension "MP3ToAudiobook.app" \
+          --app-drop-link 600 185 \
+          "MP3ToAudiobook.dmg" \
+          "MP3ToAudiobook.app"
+
+    - name: Get version
+      id: get_version
+      run: |
+        VERSION=$(git describe --tags --always --dirty)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        body: |
+          Автоматический релиз MP3ToAudiobook
+
+          ## Изменения
+          - Автоматическая сборка из коммита ${{ github.sha }}
+          - Собрано для macOS
+
+          ## Скачать
+          Скачайте `MP3ToAudiobook.dmg` для установки приложения.
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./MP3ToAudiobook.dmg
+        asset_name: MP3ToAudiobook.dmg
+        asset_content_type: application/octet-stream
