@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 extension UTType {
     static var audio: UTType {
@@ -124,14 +125,26 @@ struct ContentView: View {
                 }
 
                 // Логи (показываются только если включено)
-                if settings.showLogs && !logs.isEmpty {
+                if settings.showLogs {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("📋 Логи:")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text("📋 Логи:")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button("Скопировать") {
+                                copyLogsToClipboard()
+                            }
+                            .buttonStyle(.bordered)
+                            Button("Очистить") {
+                                clearLogs()
+                            }
+                            .buttonStyle(.bordered)
+                            .foregroundColor(.red)
+                        }
 
                         ScrollView {
-                            Text(logs)
+                            Text(logs.isEmpty ? "Логи пока пусты" : logs)
                                 .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -271,6 +284,16 @@ struct ContentView: View {
 
     private func exitApplication() {
         NSApplication.shared.terminate(nil)
+    }
+
+    private func copyLogsToClipboard() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(logs, forType: .string)
+    }
+
+    private func clearLogs() {
+        logs = ""
     }
 }
 

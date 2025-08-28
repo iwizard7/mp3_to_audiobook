@@ -109,26 +109,27 @@ jobs:
         # Convert iconset to icns
         iconutil -c icns MP3ToAudiobook.app/Contents/Resources/AppIcon.iconset -o MP3ToAudiobook.app/Contents/Resources/AppIcon.icns
 
-    - name: Sign application
+    - name: Create entitlements and sign application
       run: |
-        # Create entitlements file
+        # Create entitlements file for file access
         cat > entitlements.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
-            <key>com.apple.security.app-sandbox</key>
-            <true/>
             <key>com.apple.security.files.user-selected.read-write</key>
             <true/>
-            <key>com.apple.security.network.client</key>
+            <key>com.apple.security.files.downloads.read-write</key>
             <true/>
         </dict>
         </plist>
         EOF
 
-        # Sign the application
+        # Sign the application with ad-hoc signature
         codesign --force --sign - --entitlements entitlements.plist MP3ToAudiobook.app
+
+        # Verify signature
+        codesign --verify --verbose MP3ToAudiobook.app
 
     - name: Create DMG
       run: |
@@ -190,12 +191,26 @@ jobs:
 
           Скачайте `MP3ToAudiobook.dmg` для установки приложения на macOS.
 
+          ## ⚠️ Важно: Первый запуск
+
+          При первом запуске macOS может заблокировать приложение с сообщением "MP3ToAudiobook can't be opened". Чтобы запустить приложение:
+
+          1. Правой кнопкой мыши нажмите на `MP3ToAudiobook.app`
+          2. Выберите "Открыть" в контекстном меню
+          3. Подтвердите запуск в диалоговом окне
+
+          Или в терминале выполните:
+          ```bash
+          xattr -rd com.apple.quarantine /Applications/MP3ToAudiobook.app
+          ```
+
           ## ✨ Особенности
 
           - Современный интерфейс SwiftUI
           - Конвертация MP3 в M4B с метаданными
           - Поддержка обложек книг
           - Автоматическое определение автора и названия
+          - Встроенная система логирования
         draft: false
         prerelease: false
 
