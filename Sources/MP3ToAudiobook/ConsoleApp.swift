@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import AppKit
 
+
 struct ConsoleApp {
     static func main() {
         print("🎵 Аудио в M4B Конвертер (Консольная версия)")
@@ -152,7 +153,7 @@ struct ConsoleApp {
         }
 
         // Обработка входных файлов
-        config.inputFiles = resolveInputFiles(inputFiles)
+        config.inputFiles = resolveInputFiles(inputFiles, recursive: config.recursive)
 
         if config.inputFiles.isEmpty {
             print("❌ Ошибка: не найдено входных файлов")
@@ -178,7 +179,7 @@ struct ConsoleApp {
         return config
     }
 
-    private static func resolveInputFiles(_ inputs: [String]) -> [URL] {
+    private static func resolveInputFiles(_ inputs: [String], recursive: Bool = false) -> [URL] {
         var files: [URL] = []
 
         for input in inputs {
@@ -186,7 +187,7 @@ struct ConsoleApp {
 
             if url.hasDirectoryPath {
                 // Это папка - найти все аудиофайлы
-                if let folderFiles = findAudioFiles(in: url, recursive: config.recursive) {
+                if let folderFiles = findAudioFiles(in: url, recursive: recursive) {
                     files.append(contentsOf: folderFiles)
                 }
             } else {

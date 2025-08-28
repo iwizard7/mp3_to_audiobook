@@ -25,15 +25,9 @@ class AudioConverter {
         print("Author: \(author)")
         print("Title: \(title)")
 
-        do {
-            print("Starting logHandler call...")
-            logHandler("=== AUDIOCONVERTER СТАРТ ===")
-            print("logHandler call completed")
-        } catch {
-            print("ERROR in logHandler: \(error)")
-            completion(.failure(error))
-            return
-        }
+        print("Starting logHandler call...")
+        logHandler("=== AUDIOCONVERTER СТАРТ ===")
+        print("logHandler call completed")
         logHandler("Входные параметры:")
         logHandler("  Количество файлов: \(inputURLs.count)")
         logHandler("  Выходной файл: \(outputURL.path)")
@@ -95,209 +89,204 @@ class AudioConverter {
         logHandler("=== ЗАПУСК ОБРАБОТКИ ===")
         print("logHandler for ЗАПУСК ОБРАБОТКИ completed")
 
-        do {
-            print("Creating Task...")
-            Task {
-                print("Task started successfully")
+        print("Creating Task...")
+        Task {
+            print("Task started successfully")
+            do {
+                print("Starting file processing...")
+                print("Input URLs count in Task: \(inputURLs.count)")
+
+                logHandler("=== НАЧАЛО ОБРАБОТКИ ФАЙЛОВ ===")
+                print("logHandler for НАЧАЛО ОБРАБОТКИ ФАЙЛОВ completed")
+                logHandler("Количество файлов для обработки: \(inputURLs.count)")
+                print("About to create temp directory...")
+
+            // Создаем временную директорию для промежуточных файлов
+            print("Creating UUID...")
+            let uuidString = UUID().uuidString
+            print("UUID created: \(uuidString)")
+
+            print("Creating temp directory path...")
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("MP3ToAudiobook_temp_\(uuidString)")
+            print("Temp directory path: \(tempDir.path)")
+
+            print("Removing existing temp directory if exists...")
+            try? FileManager.default.removeItem(at: tempDir) // Удаляем если существует
+            print("Creating temp directory...")
+
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            print("Temp directory created successfully")
+
+            logHandler("Создана временная директория: \(tempDir.path)")
+            print("logHandler for temp directory completed")
+
+            print("Initializing variables...")
+            var wavFiles: [URL] = []
+            var totalDuration: TimeInterval = 0
+            var processedCount = 0
+            print("Variables initialized successfully")
+
+            // Обрабатываем файлы по одному для лучшей стабильности
+            print("About to start file processing loop...")
+            print("Input URLs count before loop: \(inputURLs.count)")
+
+            for (index, inputURL) in inputURLs.enumerated() {
+                print("Starting iteration [\(index)] of file processing loop")
+                print("Input URL: \(inputURL)")
+                print("Input URL path: \(inputURL.path)")
+                print("Input URL scheme: \(inputURL.scheme ?? "nil")")
+
+                logHandler("=== ОБРАБОТКА ФАЙЛА [\(index + 1)/\(inputURLs.count)] ===")
+                print("First logHandler call in loop completed")
+
+                logHandler("Файл: \(inputURL.lastPathComponent)")
+                print("Second logHandler call in loop completed")
+
+                logHandler("Путь: \(inputURL.path)")
+                print("Third logHandler call in loop completed")
+
+                // Проверяем существование файла
+                print("About to check file existence...")
+                let fileExists = FileManager.default.fileExists(atPath: inputURL.path)
+                print("File exists check result: \(fileExists)")
+
+                guard fileExists else {
+                    let errorMsg = "Файл не найден: \(inputURL.path)"
+                    print("File not found: \(inputURL.path)")
+                    logHandler("ОШИБКА: \(errorMsg)")
+                    completion(.failure(NSError(domain: "AudioConverter", code: -13, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                    return
+                }
+                print("File existence check passed")
+
                 do {
-                    print("Starting file processing...")
-                    print("Input URLs count in Task: \(inputURLs.count)")
+                    print("About to create AVAsset...")
+                    let asset = AVAsset(url: inputURL)
+                    print("AVAsset created successfully")
+                    print("About to call logHandler for AVAsset creation...")
+                    logHandler("Создан AVAsset для файла")
+                    print("logHandler for AVAsset creation completed")
 
-                    logHandler("=== НАЧАЛО ОБРАБОТКИ ФАЙЛОВ ===")
-                    print("logHandler for НАЧАЛО ОБРАБОТКИ ФАЙЛОВ completed")
-                    logHandler("Количество файлов для обработки: \(inputURLs.count)")
-                    print("About to create temp directory...")
-
-                // Создаем временную директорию для промежуточных файлов
-                print("Creating UUID...")
-                let uuidString = UUID().uuidString
-                print("UUID created: \(uuidString)")
-
-                print("Creating temp directory path...")
-                let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("MP3ToAudiobook_temp_\(uuidString)")
-                print("Temp directory path: \(tempDir.path)")
-
-                print("Removing existing temp directory if exists...")
-                try? FileManager.default.removeItem(at: tempDir) // Удаляем если существует
-                print("Creating temp directory...")
-
-                try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-                print("Temp directory created successfully")
-
-                logHandler("Создана временная директория: \(tempDir.path)")
-                print("logHandler for temp directory completed")
-
-                print("Initializing variables...")
-                var wavFiles: [URL] = []
-                var totalDuration: TimeInterval = 0
-                var processedCount = 0
-                print("Variables initialized successfully")
-
-                // Обрабатываем файлы по одному для лучшей стабильности
-                print("About to start file processing loop...")
-                print("Input URLs count before loop: \(inputURLs.count)")
-
-                for (index, inputURL) in inputURLs.enumerated() {
-                    print("Starting iteration [\(index)] of file processing loop")
-                    print("Input URL: \(inputURL)")
-                    print("Input URL path: \(inputURL.path)")
-                    print("Input URL scheme: \(inputURL.scheme ?? "nil")")
-
-                    logHandler("=== ОБРАБОТКА ФАЙЛА [\(index + 1)/\(inputURLs.count)] ===")
-                    print("First logHandler call in loop completed")
-
-                    logHandler("Файл: \(inputURL.lastPathComponent)")
-                    print("Second logHandler call in loop completed")
-
-                    logHandler("Путь: \(inputURL.path)")
-                    print("Third logHandler call in loop completed")
-
-                    // Проверяем существование файла
-                    print("About to check file existence...")
-                    let fileExists = FileManager.default.fileExists(atPath: inputURL.path)
-                    print("File exists check result: \(fileExists)")
-
-                    guard fileExists else {
-                        let errorMsg = "Файл не найден: \(inputURL.path)"
-                        print("File not found: \(inputURL.path)")
+                    // Проверяем, можем ли мы читать файл
+                    print("About to call asset.load(.isReadable)...")
+                    let isReadable = try await asset.load(.isReadable)
+                    print("asset.load(.isReadable) completed successfully: \(isReadable)")
+                    print("About to check isReadable guard...")
+                    guard isReadable else {
+                        let errorMsg = "Файл не доступен для чтения: \(inputURL.lastPathComponent)"
+                        print("About to call logHandler for error...")
                         logHandler("ОШИБКА: \(errorMsg)")
-                        completion(.failure(NSError(domain: "AudioConverter", code: -13, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                        print("About to create NSError...")
+                        completion(.failure(NSError(domain: "AudioConverter", code: -14, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
+                        print("About to return from error case...")
                         return
                     }
-                    print("File existence check passed")
+                    print("isReadable check passed")
 
+                    // Пробуем альтернативный подход - используем AVAudioFile для проверки файла
+                    print("About to try AVAudioFile approach...")
                     do {
-                        print("About to create AVAsset...")
-                        let asset = AVAsset(url: inputURL)
-                        print("AVAsset created successfully")
-                        print("About to call logHandler for AVAsset creation...")
-                        logHandler("Создан AVAsset для файла")
-                        print("logHandler for AVAsset creation completed")
+                        let audioFile = try AVAudioFile(forReading: inputURL)
+                        let durationSeconds = Double(audioFile.length) / audioFile.processingFormat.sampleRate
+                        totalDuration += durationSeconds
+                        logHandler("Длительность файла: \(durationSeconds) секунд (через AVAudioFile)")
 
-                        // Проверяем, можем ли мы читать файл
-                        print("About to call asset.load(.isReadable)...")
-                        let isReadable = try await asset.load(.isReadable)
-                        print("asset.load(.isReadable) completed successfully: \(isReadable)")
-                        print("About to check isReadable guard...")
-                        guard isReadable else {
-                            let errorMsg = "Файл не доступен для чтения: \(inputURL.lastPathComponent)"
-                            print("About to call logHandler for error...")
-                            logHandler("ОШИБКА: \(errorMsg)")
-                            print("About to create NSError...")
-                            completion(.failure(NSError(domain: "AudioConverter", code: -14, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
-                            print("About to return from error case...")
-                            return
+                        // Создаем WAV файл
+                        let wavURL = tempDir.appendingPathComponent(String(format: "%03d", index) + ".wav")
+                        logHandler("Создаем WAV файл: \(wavURL.lastPathComponent)")
+
+                        try await convertToWAV(inputURL: inputURL, outputURL: wavURL, logHandler: logHandler)
+                        wavFiles.append(wavURL)
+                        processedCount += 1
+
+                        logHandler("✅ Файл [\(index + 1)] успешно конвертирован в WAV")
+
+                        let currentProgress = Double(processedCount) / Double(inputURLs.count) * 0.4
+                        await MainActor.run {
+                            progressHandler(currentProgress)
                         }
-                        print("isReadable check passed")
-
-                        // Пробуем альтернативный подход - используем AVAudioFile для проверки файла
-                        print("About to try AVAudioFile approach...")
-                        do {
-                            let audioFile = try AVAudioFile(forReading: inputURL)
-                            let durationSeconds = Double(audioFile.length) / audioFile.processingFormat.sampleRate
-                            totalDuration += durationSeconds
-                            logHandler("Длительность файла: \(durationSeconds) секунд (через AVAudioFile)")
-
-                            // Создаем WAV файл
-                            let wavURL = tempDir.appendingPathComponent(String(format: "%03d", index) + ".wav")
-                            logHandler("Создаем WAV файл: \(wavURL.lastPathComponent)")
-
-                            try await convertToWAV(inputURL: inputURL, outputURL: wavURL, logHandler: logHandler)
-                            wavFiles.append(wavURL)
-                            processedCount += 1
-
-                            logHandler("✅ Файл [\(index + 1)] успешно конвертирован в WAV")
-
-                            let currentProgress = Double(processedCount) / Double(inputURLs.count) * 0.4
-                            await MainActor.run {
-                                progressHandler(currentProgress)
-                            }
-                        } catch {
-                            print("AVAudioFile approach failed: \(error.localizedDescription)")
-                            logHandler("⚠️ AVAudioFile не сработал, пробуем AVAsset: \(error.localizedDescription)")
-
-                            // Fallback to original AVAsset approach
-                            let duration = try await asset.load(.duration)
-                            let durationSeconds = CMTimeGetSeconds(duration)
-                            totalDuration += durationSeconds
-                            logHandler("Длительность файла: \(durationSeconds) секунд (через AVAsset)")
-
-                            // Создаем WAV файл
-                            let wavURL = tempDir.appendingPathComponent(String(format: "%03d", index) + ".wav")
-                            logHandler("Создаем WAV файл: \(wavURL.lastPathComponent)")
-
-                            try await convertToWAV(inputURL: inputURL, outputURL: wavURL, logHandler: logHandler)
-                            wavFiles.append(wavURL)
-                            processedCount += 1
-
-                            logHandler("✅ Файл [\(index + 1)] успешно конвертирован в WAV (через AVAsset)")
-
-                            let currentProgress = Double(processedCount) / Double(inputURLs.count) * 0.4
-                            await MainActor.run {
-                                progressHandler(currentProgress)
-                            }
-                        }
-
                     } catch {
-                        logHandler("❌ ОШИБКА при обработке файла [\(index + 1)]: \(error.localizedDescription)")
-                        logHandler("Подробности ошибки: \(error)")
+                        print("AVAudioFile approach failed: \(error.localizedDescription)")
+                        logHandler("⚠️ AVAudioFile не сработал, пробуем AVAsset: \(error.localizedDescription)")
 
-                        // Очищаем временные файлы перед выходом
-                        try? FileManager.default.removeItem(at: tempDir)
-                        completion(.failure(error))
-                        return
+                        // Fallback to original AVAsset approach
+                        let duration = try await asset.load(.duration)
+                        let durationSeconds = CMTimeGetSeconds(duration)
+                        totalDuration += durationSeconds
+                        logHandler("Длительность файла: \(durationSeconds) секунд (через AVAsset)")
+
+                        // Создаем WAV файл
+                        let wavURL = tempDir.appendingPathComponent(String(format: "%03d", index) + ".wav")
+                        logHandler("Создаем WAV файл: \(wavURL.lastPathComponent)")
+
+                        try await convertToWAV(inputURL: inputURL, outputURL: wavURL, logHandler: logHandler)
+                        wavFiles.append(wavURL)
+                        processedCount += 1
+
+                        logHandler("✅ Файл [\(index + 1)] успешно конвертирован в WAV (через AVAsset)")
+
+                        let currentProgress = Double(processedCount) / Double(inputURLs.count) * 0.4
+                        await MainActor.run {
+                            progressHandler(currentProgress)
+                        }
                     }
+
+                } catch {
+                    logHandler("❌ ОШИБКА при обработке файла [\(index + 1)]: \(error.localizedDescription)")
+                    logHandler("Подробности ошибки: \(error)")
+
+                    // Очищаем временные файлы перед выходом
+                    try? FileManager.default.removeItem(at: tempDir)
+                    completion(.failure(error))
+                    return
                 }
-
-                logHandler("=== ВСЕ ФАЙЛЫ ОБРАБОТАНЫ ===")
-                logHandler("Общее количество обработанных файлов: \(processedCount)")
-                logHandler("Общая длительность: \(totalDuration) секунд")
-                logHandler("Количество WAV файлов: \(wavFiles.count)")
-
-                // Объединяем все WAV файлы
-                logHandler("=== ОБЪЕДИНЕНИЕ WAV ФАЙЛОВ ===")
-                let combinedWAV = tempDir.appendingPathComponent("combined.wav")
-                logHandler("Объединяем в файл: \(combinedWAV.lastPathComponent)")
-
-                try await combineWAVFiles(inputURLs: wavFiles, outputURL: combinedWAV, logHandler: logHandler)
-
-                await MainActor.run {
-                    progressHandler(0.7)
-                }
-
-                logHandler("✅ WAV файлы успешно объединены")
-
-                // Конвертируем объединенный WAV в M4A
-                logHandler("=== КОНВЕРТАЦИЯ В M4A ===")
-                let coverImageData = coverImage?.tiffRepresentation
-                logHandler("Выходной файл: \(outputURL.path)")
-                logHandler("Обложка: \(coverImageData != nil ? "есть" : "нет")")
-
-                if chapterDurationMinutes > 0 {
-                    logHandler("Используем режим с главами (по \(chapterDurationMinutes) минут)")
-                    exportWAVWithChapters(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, chapterDurationMinutes: chapterDurationMinutes, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
-                } else {
-                    logHandler("Используем обычный режим экспорта")
-                    exportWAVToM4A(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
-                }
-
-                // Очищаем временные файлы
-                logHandler("Очищаем временные файлы...")
-                try? FileManager.default.removeItem(at: tempDir)
-                logHandler("✅ Временные файлы очищены")
-
-            } catch {
-                print("ERROR in Task: \(error)")
-                logHandler("❌ КРИТИЧЕСКАЯ ОШИБКА: \(error.localizedDescription)")
-                logHandler("Подробности: \(error)")
-                completion(.failure(error))
             }
-        }
-        print("Task creation completed")
+
+            logHandler("=== ВСЕ ФАЙЛЫ ОБРАБОТАНЫ ===")
+            logHandler("Общее количество обработанных файлов: \(processedCount)")
+            logHandler("Общая длительность: \(totalDuration) секунд")
+            logHandler("Количество WAV файлов: \(wavFiles.count)")
+
+            // Объединяем все WAV файлы
+            logHandler("=== ОБЪЕДИНЕНИЕ WAV ФАЙЛОВ ===")
+            let combinedWAV = tempDir.appendingPathComponent("combined.wav")
+            logHandler("Объединяем в файл: \(combinedWAV.lastPathComponent)")
+
+            try await combineWAVFiles(inputURLs: wavFiles, outputURL: combinedWAV, logHandler: logHandler)
+
+            await MainActor.run {
+                progressHandler(0.7)
+            }
+
+            logHandler("✅ WAV файлы успешно объединены")
+
+            // Конвертируем объединенный WAV в M4A
+            logHandler("=== КОНВЕРТАЦИЯ В M4A ===")
+            let coverImageData = coverImage?.tiffRepresentation
+            logHandler("Выходной файл: \(outputURL.path)")
+            logHandler("Обложка: \(coverImageData != nil ? "есть" : "нет")")
+
+            if chapterDurationMinutes > 0 {
+                logHandler("Используем режим с главами (по \(chapterDurationMinutes) минут)")
+                exportWAVWithChapters(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, chapterDurationMinutes: chapterDurationMinutes, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
+            } else {
+                logHandler("Используем обычный режим экспорта")
+                exportWAVToM4A(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
+            }
+
+            // Очищаем временные файлы
+            logHandler("Очищаем временные файлы...")
+            try? FileManager.default.removeItem(at: tempDir)
+            logHandler("✅ Временные файлы очищены")
+
         } catch {
-            print("ERROR creating Task: \(error)")
+            print("ERROR in Task: \(error)")
+            logHandler("❌ КРИТИЧЕСКАЯ ОШИБКА: \(error.localizedDescription)")
+            logHandler("Подробности: \(error)")
             completion(.failure(error))
         }
+    }
+    print("Task creation completed")
     }
     
     private static func exportCompositionWithChapters(
@@ -409,12 +398,6 @@ class AudioConverter {
             presetName = AVAssetExportPresetAppleM4A // По умолчанию используем M4A для аудио
         }
 
-        // Логирование доступных пресетов для отладки
-        print("Доступные пресеты для композиции:")
-        let availablePresets = AVAssetExportSession.exportPresets(compatibleWith: composition)
-        for preset in availablePresets {
-            print("  - \(preset)")
-        }
         print("Выбранный пресет: \(presetName)")
 
         // Создание экспорта

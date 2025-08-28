@@ -26,8 +26,11 @@ struct AudioConverterTests {
             inputURLs: [],
             outputURL: URL(fileURLWithPath: "/tmp/test.m4b"),
             author: "Test Author",
-            title: "Test Title"
-        ) { _ in } completion: { result in
+            title: "Test Title",
+            coverImage: nil,
+            progressHandler: { _ in },
+            logHandler: { _ in }
+        ) { result in
             switch result {
             case .success:
                 print("❌ ОШИБКА: ожидалась ошибка для пустого списка файлов")
@@ -55,8 +58,11 @@ struct AudioConverterTests {
             inputURLs: [testFile],
             outputURL: URL(fileURLWithPath: "/tmp/test.m4b"),
             author: "",
-            title: "Test Title"
-        ) { _ in } completion: { result in
+            title: "Test Title",
+            coverImage: nil,
+            progressHandler: { _ in },
+            logHandler: { _ in }
+        ) { result in
             switch result {
             case .success:
                 print("❌ ОШИБКА: ожидалась ошибка для пустого автора")
@@ -84,7 +90,8 @@ struct AudioConverterTests {
             inputURLs: [testFile],
             outputURL: URL(fileURLWithPath: "/tmp/test.m4b"),
             author: "Test Author",
-            title: ""
+            title: "",
+            coverImage: nil
         ) { _ in } completion: { result in
             switch result {
             case .success:
@@ -107,7 +114,8 @@ struct AudioConverterTests {
             inputURLs: [URL(fileURLWithPath: "/nonexistent/file.mp3")],
             outputURL: URL(fileURLWithPath: "/tmp/test.m4b"),
             author: "Test Author",
-            title: "Test Title"
+            title: "Test Title",
+            coverImage: nil
         ) { _ in } completion: { result in
             switch result {
             case .success:
