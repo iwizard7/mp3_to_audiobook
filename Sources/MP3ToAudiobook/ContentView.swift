@@ -119,13 +119,23 @@ struct ContentView: View {
                     .padding(.vertical, 5)
             }
 
-            // Кнопка очистки списка
-            if !selectedFiles.isEmpty && !isConverting {
-                Button("Очистить список") {
-                    clearFileList()
+            // Кнопки управления
+            HStack(spacing: 20) {
+                // Кнопка очистки списка
+                if !selectedFiles.isEmpty && !isConverting {
+                    Button("Очистить список") {
+                        clearFileList()
+                    }
+                    .buttonStyle(.bordered)
+                    .foregroundColor(.red)
+                }
+
+                // Кнопка выхода
+                Button("Выход") {
+                    exitApplication()
                 }
                 .buttonStyle(.bordered)
-                .foregroundColor(.red)
+                .foregroundColor(.gray)
             }
         }
         .padding()
@@ -201,6 +211,10 @@ struct ContentView: View {
         title = ""
         coverImage = nil
         statusMessage = ""
+    }
+
+    private func exitApplication() {
+        NSApplication.shared.terminate(nil)
     }
 }
 
