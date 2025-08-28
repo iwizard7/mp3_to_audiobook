@@ -1,19 +1,29 @@
 import SwiftUI
 
+class AppSettings: ObservableObject {
+    @AppStorage("showLogs") var showLogs = false {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+}
+
 @main
 struct MP3ToAudiobookApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var settings = AppSettings()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(settings)
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
             // Меню View
             CommandMenu("Вид") {
-                Toggle("Показывать логи", isOn: ContentView.shared.$showLogs)
+                Toggle("Показывать логи", isOn: $settings.showLogs)
                     .keyboardShortcut("L", modifiers: .command)
             }
 

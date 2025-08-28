@@ -8,7 +8,7 @@ extension UTType {
 }
 
 struct ContentView: View {
-    static var shared = ContentView()
+    @EnvironmentObject private var settings: AppSettings
 
     @State private var selectedFiles: [URL] = []
     @State private var originalFiles: [URL] = [] // Оригинальные URL для отображения имен
@@ -22,7 +22,6 @@ struct ContentView: View {
     @State private var showSavePanel = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
-    @State static var showLogs = false
     @State private var logs = ""
     
     var body: some View {
@@ -126,7 +125,7 @@ struct ContentView: View {
             }
 
             // Логи (показываются только если включено)
-            if showLogs && !logs.isEmpty {
+            if settings.showLogs && !logs.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("📋 Логи:")
                         .font(.headline)
@@ -254,7 +253,7 @@ struct ContentView: View {
         statusMessage = ""
 
         // Логирование для диагностики (только если включено)
-        if showLogs {
+        if settings.showLogs {
             addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
             addLog("Количество выбранных файлов: \(selectedFiles.count)")
             addLog("Выбранные файлы:")
