@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var showSavePanel = false
     @State private var statusMessage = ""
     @State private var statusColor = Color.primary
+    @State private var logs = ""
+    @State private var showLogs = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -142,6 +144,46 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
                 .foregroundColor(.gray)
             }
+
+            // Область логов
+            if showLogs {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Логи выполнения")
+                            .font(.headline)
+                        Spacer()
+                        Button("Скопировать логи") {
+                            copyLogsToClipboard()
+                        }
+                        .buttonStyle(.bordered)
+                        Button("Очистить логи") {
+                            clearLogs()
+                        }
+                        .buttonStyle(.bordered)
+                        Button("Скрыть логи") {
+                            showLogs.toggle()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    ScrollView {
+                        Text(logs.isEmpty ? "Логи пусты" : logs)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(5)
+                    }
+                    .frame(height: 200)
+                }
+                .padding(.top)
+            } else {
+                Button("Показать логи") {
+                    showLogs.toggle()
+                }
+                .buttonStyle(.bordered)
+                .padding(.top)
+            }
         }
         .padding()
         .frame(minWidth: 500, minHeight: 400)
@@ -184,60 +226,66 @@ struct ContentView: View {
         statusMessage = ""
 
         // Логирование для диагностики
-        print("=== НАЧАЛО КОНВЕРТАЦИИ ===")
-        print("Количество выбранных файлов: \(selectedFiles.count)")
-        print("Оригинальные файлы:")
+        addLog("=== НАЧАЛО КОНВЕРТАЦИИ ===")
+        addLog("Количество выбранных файлов: \(selectedFiles.count)")
+        addLog("Оригинальные файлы:")
         for (index, url) in originalFiles.enumerated() {
-            print("  [\(index)]: \(url.path)")
+            addLog("  [\(index)]: \(url.path)")
         }
-        print("Скопированные файлы:")
+        addLog("Скопированные файлы:")
         for (index, url) in selectedFiles.enumerated() {
-            print("  [\(index)]: \(url.path)")
+            addLog("  [\(index)]: \(url.path)")
             // Проверяем существование файла
             let fileManager = FileManager.default
             let exists = fileManager.fileExists(atPath: url.path)
-            print("    Существует: \(exists)")
+            addLog("    Существует: \(exists)")
             if exists {
                 do {
                     let attributes = try fileManager.attributesOfItem(atPath: url.path)
                     let fileSize = attributes[.size] as? Int64 ?? 0
-                    print("    Размер: \(fileSize) bytes")
+                    addLog("    Размер: \(fileSize) bytes")
                 } catch {
-                    print("    Ошибка получения атрибутов: \(error)")
+                    addLog("    Ошибка получения атрибутов: \(error)")
                 }
             }
         }
-        print("Выходной файл: \(outputURL.path)")
-        print("========================")
+        addLog("Выходной файл: \(outputURL.path)")
+        addLog("========================")
 
         AudioConverter.convertMP3ToM4B(
             inputURLs: selectedFiles,
             outputURL: outputURL,
             author: author,
             title: title,
-            coverImage: coverImage
-        ) { progressValue in
-            DispatchQueue.main.async {
-                self.progress = progressValue
+            coverImage: coverImage,
+            progressHandler: { progressValue in
+                DispatchQueue.main.async {
+                    self.progress = progressValue
+                }
+            },
+            logHandler: { logMessage in
+                DispatchQueue.main.async {
+                    self.addLog(logMessage)
+                }
             }
-        } completion: { result in
+        ) completion: { result in
             DispatchQueue.main.async {
                 self.isConverting = false
                 self.progress = 0.0
 
-                print("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
+                addLog("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
                 switch result {
                 case .success:
-                    print("✅ УСПЕХ")
+                    addLog("✅ УСПЕХ")
                     self.statusMessage = "✅ Конвертация завершена успешно!"
                     self.statusColor = .green
                 case .failure(let error):
-                    print("❌ ОШИБКА: \(error.localizedDescription)")
-                    print("Подробности ошибки: \(error)")
+                    addLog("❌ ОШИБКА: \(error.localizedDescription)")
+                    addLog("Подробности ошибки: \(error)")
                     self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
                     self.statusColor = .red
                 }
-                print("==========================")
+                addLog("==========================")
             }
         }
     }
@@ -260,31 +308,49 @@ struct ContentView: View {
         NSApplication.shared.terminate(nil)
     }
 
+    private func addLog(_ message: String) {
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        let logEntry = "[\(timestamp)] \(message)\n"
+        logs += logEntry
+        print(message) // Оставляем print для консоли
+    }
+
+    private func copyLogsToClipboard() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(logs, forType: .string)
+        statusMessage = "Логи скопированы в буфер обмена"
+        statusColor = .blue
+    }
+
+    private func clearLogs() {
+        logs = ""
+    }
+
     private func copyFilesToTempDirectory(_ urls: [URL], completion: @escaping ([URL]) -> Void) {
-        print("=== КОПИРОВАНИЕ ФАЙЛОВ ВО ВРЕМЕННУЮ ДИРЕКТОРИЮ ===")
-        print("Количество файлов для копирования: \(urls.count)")
+        addLog("=== КОПИРОВАНИЕ ФАЙЛОВ ВО ВРЕМЕННУЮ ДИРЕКТОРИЮ ===")
+        addLog("Количество файлов для копирования: \(urls.count)")
 
         DispatchQueue.global(qos: .background).async {
             let fileManager = FileManager.default
             let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent("MP3ToAudiobook")
 
-            print("Временная директория: \(tempDirectory.path)")
+            self.addLog("Временная директория: \(tempDirectory.path)")
 
             // Создаем временную директорию если её нет
             do {
                 try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
-                print("Временная директория создана")
+                self.addLog("Временная директория создана")
             } catch {
-                print("Ошибка создания временной директории: \(error)")
+                self.addLog("Ошибка создания временной директории: \(error)")
             }
 
             // Очищаем старую временную директорию
             do {
                 try fileManager.removeItem(at: tempDirectory)
                 try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
-                print("Старая временная директория очищена")
+                self.addLog("Старая временная директория очищена")
             } catch {
-                print("Ошибка очистки временной директории: \(error)")
+                self.addLog("Ошибка очистки временной директории: \(error)")
             }
 
             var copiedURLs: [URL] = []
@@ -293,48 +359,48 @@ struct ContentView: View {
                 let fileName = url.lastPathComponent
                 let destinationURL = tempDirectory.appendingPathComponent(fileName)
 
-                print("Копирование файла [\(index)]: \(fileName)")
-                print("  Из: \(url.path)")
-                print("  В: \(destinationURL.path)")
+                self.addLog("Копирование файла [\(index)]: \(fileName)")
+                self.addLog("  Из: \(url.path)")
+                self.addLog("  В: \(destinationURL.path)")
 
                 // Проверяем существование исходного файла
                 let sourceExists = fileManager.fileExists(atPath: url.path)
-                print("  Исходный файл существует: \(sourceExists)")
+                self.addLog("  Исходный файл существует: \(sourceExists)")
 
                 if sourceExists {
                     do {
                         let sourceAttributes = try fileManager.attributesOfItem(atPath: url.path)
                         let sourceSize = sourceAttributes[.size] as? Int64 ?? 0
-                        print("  Размер исходного файла: \(sourceSize) bytes")
+                        self.addLog("  Размер исходного файла: \(sourceSize) bytes")
 
                         try fileManager.copyItem(at: url, to: destinationURL)
                         copiedURLs.append(destinationURL)
 
                         // Проверяем скопированный файл
                         let destExists = fileManager.fileExists(atPath: destinationURL.path)
-                        print("  Скопированный файл существует: \(destExists)")
+                        self.addLog("  Скопированный файл существует: \(destExists)")
 
                         if destExists {
                             let destAttributes = try fileManager.attributesOfItem(atPath: destinationURL.path)
                             let destSize = destAttributes[.size] as? Int64 ?? 0
-                            print("  Размер скопированного файла: \(destSize) bytes")
+                            self.addLog("  Размер скопированного файла: \(destSize) bytes")
                         }
 
-                        print("  ✅ Файл [\(index)] скопирован успешно")
+                        self.addLog("  ✅ Файл [\(index)] скопирован успешно")
                     } catch {
-                        print("  ❌ Ошибка копирования файла \(fileName): \(error)")
+                        self.addLog("  ❌ Ошибка копирования файла \(fileName): \(error)")
                         // Если не удалось скопировать, используем оригинальный URL
                         copiedURLs.append(url)
-                        print("  Используем оригинальный URL")
+                        self.addLog("  Используем оригинальный URL")
                     }
                 } else {
-                    print("  ❌ Исходный файл не существует")
+                    self.addLog("  ❌ Исходный файл не существует")
                     copiedURLs.append(url)
                 }
             }
 
-            print("Всего скопировано файлов: \(copiedURLs.count)")
-            print("===============================================")
+            self.addLog("Всего скопировано файлов: \(copiedURLs.count)")
+            self.addLog("===============================================")
 
             DispatchQueue.main.async {
                 completion(copiedURLs)

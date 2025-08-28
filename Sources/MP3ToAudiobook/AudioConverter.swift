@@ -10,23 +10,24 @@ class AudioConverter {
         title: String,
         coverImage: NSImage?,
         progressHandler: @escaping (Double) -> Void,
+        logHandler: @escaping (String) -> Void = { _ in },
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
-        print("=== AUDIOCONVERTER СТАРТ ===")
-        print("Входные URL:")
+        logHandler("=== AUDIOCONVERTER СТАРТ ===")
+        logHandler("Входные URL:")
         for (index, url) in inputURLs.enumerated() {
-            print("  [\(index)]: \(url.absoluteString)")
-            print("    Путь: \(url.path)")
-            print("    Схема: \(url.scheme ?? "nil")")
+            logHandler("  [\(index)]: \(url.absoluteString)")
+            logHandler("    Путь: \(url.path)")
+            logHandler("    Схема: \(url.scheme ?? "nil")")
         }
-        print("Выходной URL: \(outputURL.absoluteString)")
-        print("============================")
+        logHandler("Выходной URL: \(outputURL.absoluteString)")
+        logHandler("============================")
 
         DispatchQueue.global(qos: .background).async {
             let composition = AVMutableComposition()
             guard let audioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
                 let error = NSError(domain: "AudioConverter", code: -1, userInfo: [NSLocalizedDescriptionKey: "Не удалось создать аудио трек"])
-                print("ОШИБКА: \(error.localizedDescription)")
+                logHandler("ОШИБКА: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
@@ -37,7 +38,7 @@ class AudioConverter {
             func processNextFile() {
                 guard processedFiles < inputURLs.count else {
                     // Все файлы обработаны, начинаем экспорт
-                    print("Все файлы обработаны, начинаем экспорт...")
+                    logHandler("Все файлы обработаны, начинаем экспорт...")
                     // Конвертируем NSImage в Data заранее
                     let coverImageData = coverImage?.tiffRepresentation
                     exportComposition(composition, outputURL: outputURL, author: author, title: title, coverImageData: coverImageData, completion: completion)
@@ -45,42 +46,42 @@ class AudioConverter {
                 }
 
                 let inputURL = inputURLs[processedFiles]
-                print("Обрабатываем файл [\(processedFiles)]: \(inputURL.lastPathComponent)")
-                print("  Полный путь: \(inputURL.path)")
+                logHandler("Обрабатываем файл [\(processedFiles)]: \(inputURL.lastPathComponent)")
+                logHandler("  Полный путь: \(inputURL.path)")
 
                 let asset = AVAsset(url: inputURL)
-                print("  Создан AVAsset для файла")
+                logHandler("  Создан AVAsset для файла")
 
                 // Загружаем треки асинхронно
                 asset.loadTracks(withMediaType: .audio) { audioTracks, error in
                     if let error = error {
-                        print("  ОШИБКА загрузки треков: \(error.localizedDescription)")
+                        logHandler("  ОШИБКА загрузки треков: \(error.localizedDescription)")
                         completion(.failure(error))
                         return
                     }
 
-                    print("  Найдено аудио треков: \(audioTracks?.count ?? 0)")
+                    logHandler("  Найдено аудио треков: \(audioTracks?.count ?? 0)")
 
                     guard let audioAssetTrack = audioTracks?.first else {
                         let errorMsg = "Не найден аудио трек в файле \(inputURL.lastPathComponent)"
-                        print("  ОШИБКА: \(errorMsg)")
+                        logHandler("  ОШИБКА: \(errorMsg)")
                         completion(.failure(NSError(domain: "AudioConverter", code: -2, userInfo: [NSLocalizedDescriptionKey: errorMsg])))
                         return
                     }
 
-                    print("  Аудио трек найден, загружаем длительность...")
+                    logHandler("  Аудио трек найден, загружаем длительность...")
 
                     // Загружаем свойства асинхронно
                     Task {
                         do {
                             let duration = try await asset.load(.duration)
-                            print("  Длительность: \(CMTimeGetSeconds(duration)) секунд")
+                            logHandler("  Длительность: \(CMTimeGetSeconds(duration)) секунд")
 
                             let timeRange = CMTimeRange(start: .zero, duration: duration)
-                            print("  Создан timeRange: \(CMTimeGetSeconds(timeRange.duration)) секунд")
+                            logHandler("  Создан timeRange: \(CMTimeGetSeconds(timeRange.duration)) секунд")
 
                             try audioTrack.insertTimeRange(timeRange, of: audioAssetTrack, at: currentTime)
-                            print("  Трек вставлен в композицию")
+                            logHandler("  Трек вставлен в композицию")
 
                             currentTime = CMTimeAdd(currentTime, timeRange.duration)
                             processedFiles += 1
@@ -89,13 +90,13 @@ class AudioConverter {
                                 progressHandler(Double(processedFiles) / Double(inputURLs.count) * 0.5)
                             }
 
-                            print("  Файл [\(processedFiles-1)] обработан успешно")
+                            logHandler("  Файл [\(processedFiles-1)] обработан успешно")
                             // Обрабатываем следующий файл
                             processNextFile()
 
                         } catch {
-                            print("  ОШИБКА обработки файла: \(error.localizedDescription)")
-                            print("  Подробности: \(error)")
+                            logHandler("  ОШИБКА обработки файла: \(error.localizedDescription)")
+                            logHandler("  Подробности: \(error)")
                             completion(.failure(error))
                             return
                         }
