@@ -267,27 +267,28 @@ struct ContentView: View {
                 DispatchQueue.main.async {
                     self.addLog(logMessage)
                 }
-            }
-        ) completion: { result in
-            DispatchQueue.main.async {
-                self.isConverting = false
-                self.progress = 0.0
+            },
+            completion: { result in
+                DispatchQueue.main.async {
+                    self.isConverting = false
+                    self.progress = 0.0
 
-                addLog("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
-                switch result {
-                case .success:
-                    addLog("✅ УСПЕХ")
-                    self.statusMessage = "✅ Конвертация завершена успешно!"
-                    self.statusColor = .green
-                case .failure(let error):
-                    addLog("❌ ОШИБКА: \(error.localizedDescription)")
-                    addLog("Подробности ошибки: \(error)")
-                    self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
-                    self.statusColor = .red
+                    self.addLog("=== РЕЗУЛЬТАТ КОНВЕРТАЦИИ ===")
+                    switch result {
+                    case .success:
+                        self.addLog("✅ УСПЕХ")
+                        self.statusMessage = "✅ Конвертация завершена успешно!"
+                        self.statusColor = .green
+                    case .failure(let error):
+                        self.addLog("❌ ОШИБКА: \(error.localizedDescription)")
+                        self.addLog("Подробности ошибки: \(error)")
+                        self.statusMessage = "❌ Ошибка конвертации: \(error.localizedDescription)"
+                        self.statusColor = .red
+                    }
+                    self.addLog("==========================")
                 }
-                addLog("==========================")
             }
-        }
+        )
     }
 
     private func clearFileList() {
