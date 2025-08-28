@@ -1,0 +1,81 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe": ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe>"]
+  "MP3ToAudiobook-arm64-apple-macosx15.0-debug.module": ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe>","<MP3ToAudiobook-arm64-apple-macosx15.0-debug.module>"]
+  "test": ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe>","<MP3ToAudiobook-arm64-apple-macosx15.0-debug.module>"]
+default: "main"
+nodes:
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook":
+    is-mutated: true
+commands:
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook-entitlement.plist"]
+    description: "Write auxiliary file /Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook-entitlement.plist"
+
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/App.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/AudioConverter.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/ContentView.swift"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/sources"]
+    description: "Write auxiliary file /Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/sources"
+
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/App.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/AudioConverter.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/ContentView.swift.o"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.product/Objects.LinkFileList"
+
+  "/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+
+  "<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe>":
+    tool: phony
+    inputs: ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe-CodeSigning>"]
+    outputs: ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe>"]
+
+  "<MP3ToAudiobook-arm64-apple-macosx15.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/App.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/AudioConverter.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/ContentView.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/Modules/MP3ToAudiobook.swiftmodule"]
+    outputs: ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.module>"]
+
+  "C.MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe":
+    tool: shell
+    inputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/App.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/AudioConverter.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/ContentView.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.product/Objects.LinkFileList"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/MP3ToAudiobook"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug","-o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook","-module-name","MP3ToAudiobook","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_MP3ToAudiobook_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.product/Objects.LinkFileList","-target","arm64-apple-macosx13.0","-Xlinker","-add_ast_path","-Xlinker","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/Modules/MP3ToAudiobook.swiftmodule","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook-entitlement.plist"]
+    outputs: ["<MP3ToAudiobook-arm64-apple-macosx15.0-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/MP3ToAudiobook"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook-entitlement.plist","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook"]
+
+  "C.MP3ToAudiobook-arm64-apple-macosx15.0-debug.module":
+    tool: shell
+    inputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/App.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/AudioConverter.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/ContentView.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/sources"]
+    outputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/App.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/AudioConverter.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/ContentView.swift.o","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/Modules/MP3ToAudiobook.swiftmodule"]
+    description: "Compiling Swift Module 'MP3ToAudiobook' (3 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","MP3ToAudiobook","-emit-dependencies","-emit-module","-emit-module-path","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/Modules/MP3ToAudiobook.swiftmodule","-output-file-map","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/output-file-map.json","-incremental","-c","@/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/MP3ToAudiobook.build/sources","-I","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx13.0","-enable-batch-mode","-index-store-path","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j8","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","MP3ToAudiobook_main","-color-diagnostics","-swift-version","5","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mp3toaudiobook"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Sources/MP3ToAudiobook/","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Package.swift","/Users/dmitrijsibanov/Desktop/My projects/mp3toaudiobook/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

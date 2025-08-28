@@ -2,29 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "MP3toAudiobook",
+    name: "MP3ToAudiobook",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(
-            name: "mp3toaudiobook",
-            targets: ["MP3toAudiobook"]
-        ),
+        .executable(name: "MP3ToAudiobook", targets: ["MP3ToAudiobook"])
     ],
-    dependencies: [
-        // Добавить зависимости при необходимости
-    ],
+    dependencies: [],
     targets: [
         .executableTarget(
-            name: "MP3toAudiobook",
-            dependencies: [],
-            path: "mp3toaudiobook"
-        ),
-        .testTarget(
-            name: "MP3toAudiobookTests",
-            dependencies: ["MP3toAudiobook"],
-            path: "Tests"
-        ),
+            name: "MP3ToAudiobook",
+            dependencies: []
+        )
     ]
 )
