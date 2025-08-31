@@ -12,6 +12,26 @@ class AppSettings: ObservableObject {
             objectWillChange.send()
         }
     }
+
+    @AppStorage("tempDirectoryPath") var tempDirectoryPath = "" {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+
+    /// Возвращает путь к временной директории (использует системную по умолчанию, если не задано)
+    var effectiveTempDirectory: URL {
+        if tempDirectoryPath.isEmpty {
+            return FileManager.default.temporaryDirectory
+        } else {
+            return URL(fileURLWithPath: tempDirectoryPath)
+        }
+    }
+
+    /// Сбрасывает путь к временной директории на системный по умолчанию
+    func resetTempDirectoryToDefault() {
+        tempDirectoryPath = ""
+    }
 }
 
 

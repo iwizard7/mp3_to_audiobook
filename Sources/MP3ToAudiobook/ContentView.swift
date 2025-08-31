@@ -170,6 +170,43 @@ struct ContentView: View {
                                         .font(.caption)
                                 }
                             }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Путь для временных файлов:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                HStack(spacing: 8) {
+                                    TextField("Путь к временной директории", text: $settings.tempDirectoryPath)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: .infinity)
+
+                                    Button("Выбрать...") {
+                                        let openPanel = NSOpenPanel()
+                                        openPanel.canChooseFiles = false
+                                        openPanel.canChooseDirectories = true
+                                        openPanel.canCreateDirectories = true
+                                        openPanel.allowsMultipleSelection = false
+                                        openPanel.title = "Выберите директорию для временных файлов"
+
+                                        if openPanel.runModal() == .OK, let url = openPanel.url {
+                                            settings.tempDirectoryPath = url.path
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+
+                                    Button("По умолчанию") {
+                                        settings.resetTempDirectoryToDefault()
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+
+                                Text("Текущий путь: \(settings.effectiveTempDirectory.path)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
                         }
                         .transition(.opacity)
                     }
@@ -496,6 +533,7 @@ struct ContentView: View {
             quality: quality,
             chapterDurationMinutes: chapterDurationMinutes,
             coverImage: coverImage,
+            tempDirectory: settings.effectiveTempDirectory,
             progressHandler: { progressValue in
                 DispatchQueue.main.async {
                     self.progress = progressValue

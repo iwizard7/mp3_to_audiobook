@@ -293,6 +293,7 @@ class AudioConverter {
         quality: String = "high",
         chapterDurationMinutes: Int = 0,
         coverImage: NSImage?,
+        tempDirectory: URL? = nil,
         progressHandler: @escaping (Double) -> Void,
         logHandler: @escaping (String) -> Void = { _ in },
         completion: @escaping (Result<Void, Error>) -> Void
@@ -385,7 +386,8 @@ class AudioConverter {
             print("UUID created: \(uuidString)")
 
             print("Creating temp directory path...")
-            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("MP3ToAudiobook_temp_\(uuidString)")
+            let baseTempDir = tempDirectory ?? FileManager.default.temporaryDirectory
+            let tempDir = baseTempDir.appendingPathComponent("MP3ToAudiobook_temp_\(uuidString)")
             print("Temp directory path: \(tempDir.path)")
 
             print("Removing existing temp directory if exists...")
@@ -586,7 +588,8 @@ class AudioConverter {
         print("Создание оглавления...")
 
         // Создаем временный WAV файл для обработки с главами
-        let tempWAVURL = FileManager.default.temporaryDirectory.appendingPathComponent("temp_chapter_audio.wav")
+        let baseTempDir = tempDirectory ?? FileManager.default.temporaryDirectory
+        let tempWAVURL = baseTempDir.appendingPathComponent("temp_chapter_audio.wav")
 
         // Экспортируем композицию во временный WAV
         guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
