@@ -548,7 +548,7 @@ class AudioConverter {
 
             if chapterDurationMinutes > 0 {
                 logHandler("Используем режим с главами (по \(chapterDurationMinutes) минут)")
-                exportWAVWithChapters(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, chapterDurationMinutes: chapterDurationMinutes, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
+                exportWAVWithChapters(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, chapterDurationMinutes: chapterDurationMinutes, coverImageData: coverImageData, tempDirectory: tempDirectory, logHandler: logHandler, completion: completion)
             } else {
                 logHandler("Используем обычный режим экспорта")
                 exportWAVToM4A(combinedWAV, outputURL: outputURL, author: author, title: title, genre: genre, description: description, series: series, seriesNumber: seriesNumber, quality: quality, coverImageData: coverImageData, logHandler: logHandler, completion: completion)
@@ -581,6 +581,7 @@ class AudioConverter {
         quality: String,
         chapterDurationMinutes: Int,
         coverImageData: Data?,
+        tempDirectory: URL?,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
         print("=== ЭКСПОРТ С ГЛАВАМИ ===")
@@ -618,6 +619,7 @@ class AudioConverter {
                         quality: quality,
                         chapterDurationMinutes: chapterDurationMinutes,
                         coverImageData: coverImageData,
+                        tempDirectory: tempDirectory,
                         logHandler: { message in print(message) },
                         completion: { result in
                             // Очищаем временный файл
@@ -1097,6 +1099,7 @@ class AudioConverter {
         quality: String,
         chapterDurationMinutes: Int,
         coverImageData: Data?,
+        tempDirectory: URL?,
         logHandler: @escaping (String) -> Void,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
@@ -1173,6 +1176,7 @@ class AudioConverter {
                     chapterTitles: chapterTitles,
                     chapterDurationSeconds: chapterDurationSeconds,
                     coverImageData: coverImageData,
+                    tempDirectory: tempDirectory,
                     logHandler: logHandler,
                     completion: completion
                 )
@@ -1197,6 +1201,7 @@ class AudioConverter {
         chapterTitles: [String],
         chapterDurationSeconds: Double,
         coverImageData: Data?,
+        tempDirectory: URL?,
         logHandler: @escaping (String) -> Void,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
