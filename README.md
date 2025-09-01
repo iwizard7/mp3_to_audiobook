@@ -1,3 +1,4 @@
+[![Build and Release MP3ToAudiobook](https://github.com/iwizard7/mp3_to_audiobook/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/iwizard7/mp3_to_audiobook/actions/workflows/build-and-release.yml)
 # MP3 в M4B Конвертер
 
 Приложение для конвертации MP3 файлов в формат M4B аудиокниг Apple с метаданными.
